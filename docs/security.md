@@ -9,3 +9,5 @@ Service WorkerとWebSocketを無効化しています。HTTP Basic認証情報�
 ローカルのWordPressも非公開IPに該当するため、現在のRunnerの撮影対象には指定できません。ローカル環境向けの限定許可方式は後続で設計します。汎用的なSSRFガード解除フラグは提供しません。
 
 画像はWordPressへアップロードせず、指定したローカルディレクトリへ保存します。出力ディレクトリの作成権限は0700です。共有Webディレクトリを出力先に使用しないでください。WordPress側の非公開Storage・認証付き画像配信はPhase 3・4で実装します。
+
+Issue #4の [API・Runner認証・非公開Storage設計](api-security-storage-design.md) は、製品版のTokenスコープ、Apache/Nginxの公開拒否、認証付きBlob取得、Upload・削除の競合、Basic認証の秘密専用通信を定義する設計案です。プロトタイプへ実装済みではありません。
