@@ -10,7 +10,7 @@
 | Phase 4 Runner API | 製品用Schema・共通型・Node/PHP検証器を実装。APIルート・Token・Uploadは未実装 |
 | Phase 5 Cloud Run | 未実装 |
 | Phase 6 Admin UI | 未実装 |
-| Phase 7 Hardening | 一部の入力・通信検査とエラー継続を実装。DNS rebinding等は未対応 |
+| Phase 7 Hardening | 用途別policy・DNS全回答検査・固定HTTP transport・通信予算を実装。ブラウザ適用とクラウド経路の検証は後続 |
 
 共通Device型・プリセット・閾値と、DeviceおよびプロトタイプManifestのJSON Schemaを追加しています。prototype-manifest.schema.jsonはローカル撮影用で、将来のrun-manifest.schema.jsonとは区別します。Issue #26で製品用Run・Snapshot・Dispatchと管理APIのSchema・共通型・検証器を追加しました。契約と入口は [api-contracts.md](api-contracts.md) を参照してください。
 
