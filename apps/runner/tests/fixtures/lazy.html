@@ -1,0 +1,22 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body { margin: 0; }
+#top { position: fixed; top: 0; width: 40px; height: 40px; background: #ff0000; }
+#space { height: 1200px; }
+img { display: block; width: 80px; height: 80px; background: #ff0000; }
+</style>
+<div id="top"></div><div id="space"></div><img id="lazy">
+<script>
+let scrolled = false;
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 0) {
+    scrolled = true;
+    if (!lazy.hasAttribute('src')) lazy.src = '/blue.png';
+    if (location.search === '?grow') space.style.height = `${document.documentElement.scrollHeight + 500}px`;
+  } else if (scrolled) {
+    topMarker.style.background = '#00ff00';
+  }
+});
+const topMarker = document.getElementById('top');
+</script>

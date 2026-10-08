@@ -16,7 +16,22 @@ npm test
 composer lint
 ```
 
-ブラウザテストはネットワーク上の実サイトに依存せず、Chromium内の固定HTMLを撮影・比較します。Linuxでブラウザ依存ライブラリが不足する場合は `npx playwright install --with-deps chromium` を使います。
+ブラウザテストはネットワーク上の実サイトに依存せず、固定HTMLと制御可能なfixtureをChromiumで撮影・比較します。Linuxでブラウザ依存ライブラリが不足する場合は `npx playwright install --with-deps chromium` を使います。
+
+### 撮影条件のfixtureテスト
+
+```sh
+npm run build
+node --test apps/runner/tests/browser.test.mjs
+```
+
+`apps/runner/tests/fixtures/` のHTMLを仮想Originへの応答として返し、スクロールで現れる画像、最上部へ戻った表示、Lazy Load無効、遅延画像・フォントの成功とtimeout、壊れた画像、両方式のマスク、Device設定とCSS pixelでの出力寸法を検証します。遅延リソースは応答を明示的に解放するか保留し続けるため、外部回線速度に左右されません。テスト用フォントはインストール済みPlaywrightに同梱されるTTFを使います。
+
+Basic認証はfixture専用の資格情報と、ループバックの一時ポート2つを使います。正常認証・誤ったパスワード・別Originの401に資格情報を送らないことを確認し、環境変数とサーバーを終了時に復元・終了します。これらはBrowser層の単体テストとしてContextを直接使います。本番のSSRFガードに例外や無効化設定は追加せず、内部IPを拒否する既存Browserテストも維持します。
+
+撮影前のアニメーション・transition・smooth scroll抑止にはChromiumの構築可能なスタイルシートを使います。インラインstyle/scriptを禁止するCSP下でも撮影でき、ページ全体のCSPは無効化しません。fixtureでは同一Originの外部CSSが適用され、インラインscriptが拒否されることも検証します。CSPが拒否したページ側リソースを撮影処理で許可することはありません。
+
+待機の対象は`document.fonts`と`document.images`です。フォントの取得失敗ではブラウザの代替フォントが使われる場合があります。CSS背景画像、iframe内の画像、Shadow DOM内部やJavaScriptで後から追加されるリソースの完全な安定化は保証しません。Lazy Load無効はRunnerの事前スクロールを省略する設定で、ブラウザ自身やサイトの読込動作は停止しません。フォント・スクロール・画像の各待機に`image_timeout_ms`を適用し、timeoutは`IMAGE_LOAD_FAILED`として扱います。スクロールのtimeout時にも最上部へ戻します。
 
 ## 撮影と比較
 
