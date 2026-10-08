@@ -133,6 +133,7 @@ export type Error = {
             id: number;
             name: string;
         }>;
+        reason?: "missing" | "corrupt" | "incompatible";
     };
 };
 export type ProgressRequest = {
