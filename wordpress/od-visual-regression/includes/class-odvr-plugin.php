@@ -47,6 +47,10 @@ final class ODVR_Plugin {
 		}
 
 		ODVR_DB::upgrade();
+		add_action( 'odvr_storage_cleanup', array( 'ODVR_Storage', 'cleanup_cron' ) );
+		if ( ! wp_next_scheduled( 'odvr_storage_cleanup' ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'hourly', 'odvr_storage_cleanup' );
+		}
 		add_action( 'init', array( $this, 'load_textdomain' ) );
 		add_action( 'admin_notices', array( $this, 'database_notice' ) );
 		add_filter( 'wpmu_drop_tables', array( $this, 'site_tables' ), 10, 2 );
@@ -90,6 +94,9 @@ final class ODVR_Plugin {
 		require_once __DIR__ . '/class-odvr-content-controller.php';
 		$controller = new ODVR_Content_Controller();
 		$controller->register_routes();
+		require_once __DIR__ . '/class-odvr-image-controller.php';
+		$images = new ODVR_Image_Controller();
+		$images->register_routes();
 	}
 
 	/**

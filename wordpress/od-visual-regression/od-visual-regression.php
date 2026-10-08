@@ -31,6 +31,8 @@ require_once __DIR__ . '/includes/class-odvr-repository.php';
 require_once __DIR__ . '/includes/class-odvr-suite-repository.php';
 require_once __DIR__ . '/includes/class-odvr-target-repository.php';
 require_once __DIR__ . '/includes/class-odvr-device-repository.php';
+require_once __DIR__ . '/includes/class-odvr-png.php';
+require_once __DIR__ . '/includes/class-odvr-storage.php';
 require_once __DIR__ . '/includes/class-odvr-activator.php';
 require_once __DIR__ . '/includes/class-odvr-deactivator.php';
 require_once __DIR__ . '/includes/class-odvr-plugin.php';
