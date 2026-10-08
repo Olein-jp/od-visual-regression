@@ -22,7 +22,10 @@ final class ODVR_Deactivator {
 	 * @return void
 	 */
 	public static function deactivate() {
-		// 無効化時は履歴や設定を削除しない.
+		// 停止とToken失効を確定し、履歴や設定を削除しない.
+		$result = ( new ODVR_Uninstaller() )->suspend();
+		if ( is_wp_error( $result ) ) {
+			update_option( 'odvr_uninstall_error', 'Runの停止状態を確認してください。', false ); }
 		wp_clear_scheduled_hook( 'odvr_storage_cleanup' );
 		wp_clear_scheduled_hook( 'odvr_run_expiry' );
 	}

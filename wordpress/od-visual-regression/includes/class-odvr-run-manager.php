@@ -972,41 +972,10 @@ final class ODVR_Run_Manager extends ODVR_Run_Repository {
 	public function request_delete( $id ) {
 		return $this->read(
 			function () use ( $id ) {
-				$before = $this->row( 'runs', $id );
+				$row = $this->row( 'runs', $id );
 				$this->checked( $this->expire( $id ) );
-				return $this->checked(
-					$this->transaction(
-						function () use ( $before, $id ) {
-							global $wpdb;
-							$row = $this->lock_run( $before['uuid'] );
-							if ( 'deleting' === $row['status'] ) {
-									return $this->state( $row );
-							}
-							if ( ! in_array( $row['status'], array( 'complete', 'partial', 'failed' ), true ) ) {
-								$this->fail( 'odvr_run_protected', 409 );
-							}
-							$referenced = $this->rows( $wpdb->prepare( 'SELECT id FROM %i WHERE baseline_run_id = %d', ODVR_DB::table( 'suites' ), $id ) );
-							$referenced = array_merge( $referenced, $this->rows( $wpdb->prepare( 'SELECT id FROM %i WHERE reference_run_id = %d AND status <> %s', ODVR_DB::table( 'runs' ), $id, 'deleting' ) ) );
-							$referenced = array_merge( $referenced, $this->rows( $wpdb->prepare( 'SELECT s.id FROM %i s JOIN %i r ON r.id = s.run_id JOIN %i b ON b.id = s.baseline_snapshot_id WHERE b.run_id = %d AND r.status <> %s', ODVR_DB::table( 'snapshots' ), ODVR_DB::table( 'runs' ), ODVR_DB::table( 'snapshots' ), $id, 'deleting' ) ) );
-							if ( $referenced ) {
-								$this->fail( 'odvr_run_protected', 409 );
-							}
-							$this->written(
-								$wpdb->update(
-									ODVR_DB::table( 'runs' ),
-									array(
-										'status'     => 'deleting',
-										'runner_token_hash' => null,
-										'deletion_requested_at' => ODVR_DB::utc_now(),
-										'updated_at' => ODVR_DB::utc_now(),
-									),
-									array( 'id' => $this->id( $id ) )
-								)
-							);
-							return $this->state( $this->row( 'runs', $id ) );
-						}
-					)
-				);
+				$this->checked( ( new ODVR_Retention() )->request( $this->integer( $row['suite_id'], true ), array( $this->id( $id ) ) ) );
+				return $this->state( $this->row( 'runs', $id ) );
 			}
 		);
 	}

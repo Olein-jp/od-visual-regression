@@ -319,3 +319,7 @@ DBの検証はWordPress 6.7と既定版、PHP 7.4、InnoDBで行い、MySQL/Mari
 ## Issue #30 の製品実装
 
 固定Manifest・Environment、Baseline全モード/利用時Version検査、Runの状態遷移・期限・Complete再送を実装しました。保存形式、内部Tokenの扱い、検証と後続Issueの境界は [runs-and-baselines.md](runs-and-baselines.md) を参照してください。
+
+## Issue #31 の実装
+
+参照閉包の Retention、閉じた集合の削除確定、画像からの再開可能な削除、無効化時の失効、サイト別 Uninstall を実装した。[手順と検証範囲](retention-and-uninstall.md)を参照する。管理 API・画面への接続は後続で行う。

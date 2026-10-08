@@ -70,7 +70,7 @@ function odvr_db_test_reset() {
 	foreach ( ODVR_DB_Schema::definitions() as $suffix => $definition ) {
 		$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', ODVR_DB::table( $suffix ) ) );
 	}
-	foreach ( array( 'odvr_db_version', 'odvr_db_error', 'odvr_db_upgrade_lock' ) as $option ) {
+	foreach ( array( 'odvr_db_version', 'odvr_db_error', 'odvr_db_upgrade_lock', 'odvr_suspended', 'odvr_deleting_site' ) as $option ) {
 		delete_option( $option );
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE option_name = %s', $wpdb->options, $option ) );
 	}

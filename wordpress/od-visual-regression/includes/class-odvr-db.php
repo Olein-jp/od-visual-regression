@@ -110,12 +110,12 @@ final class ODVR_DB {
 	 */
 	public static function writable() {
 		global $wpdb;
-		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT option_name, option_value FROM %i WHERE option_name IN (%s, %s, %s)', $wpdb->options, 'odvr_db_version', 'odvr_db_error', 'odvr_db_upgrade_lock' ), ARRAY_A );
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT option_name, option_value FROM %i WHERE option_name IN (%s, %s, %s, %s, %s)', $wpdb->options, 'odvr_db_version', 'odvr_db_error', 'odvr_db_upgrade_lock', 'odvr_suspended', 'odvr_deleting_site' ), ARRAY_A );
 		if ( ! is_array( $rows ) || $wpdb->last_error ) {
 			return self::error( 'odvr_database_not_ready' );
 		}
 		$state = array_column( $rows, 'option_value', 'option_name' );
-		if ( '1' !== (string) ( $state['odvr_db_version'] ?? '' ) || isset( $state['odvr_db_error'] ) || isset( $state['odvr_db_upgrade_lock'] ) ) {
+		if ( '1' !== (string) ( $state['odvr_db_version'] ?? '' ) || isset( $state['odvr_db_error'] ) || isset( $state['odvr_db_upgrade_lock'] ) || isset( $state['odvr_suspended'] ) || isset( $state['odvr_deleting_site'] ) ) {
 			return self::error( 'odvr_database_not_ready' );
 		}
 		return true;
@@ -128,6 +128,9 @@ final class ODVR_DB {
 	 * @return true|WP_Error 結果.
 	 */
 	public static function upgrade( $verify_current = false ) {
+		if ( false !== get_option( 'odvr_deleting_site', false ) ) {
+			return self::error( 'odvr_database_not_ready' );
+		}
 		$version = get_option( 'odvr_db_version', false );
 		if ( false !== $version && ! in_array( (string) $version, array( '0', '1' ), true ) ) {
 			return self::fail( 'odvr_unsupported_db_version' );

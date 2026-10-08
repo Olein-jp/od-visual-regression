@@ -218,7 +218,7 @@ class ODVR_Run_Repository extends ODVR_Repository {
 			$reference             = $this->row( 'runs', $manifest->reference->run_id );
 			$reference_environment = ODVR_Environment::visible( $this->checked( ODVR_Environment::decode( $reference['environment'] ) ) );
 		}
-		$referenced    = $this->rows( $wpdb->prepare( 'SELECT id, uuid, status, created_at FROM %i WHERE reference_run_id = %d AND status <> %s ORDER BY id', ODVR_DB::table( 'runs' ), $this->integer( $row['id'], true ), 'deleting' ) );
+		$referenced    = $this->rows( $wpdb->prepare( 'SELECT r.id, r.uuid, r.status, r.created_at FROM %i r WHERE r.status <> %s AND (r.reference_run_id = %d OR EXISTS (SELECT 1 FROM %i s JOIN %i b ON b.id = s.baseline_snapshot_id WHERE s.run_id = r.id AND b.run_id = %d)) ORDER BY r.id', ODVR_DB::table( 'runs' ), 'deleting', $this->integer( $row['id'], true ), ODVR_DB::table( 'snapshots' ), ODVR_DB::table( 'snapshots' ), $this->integer( $row['id'], true ) ) );
 		$referenced_by = array();
 		foreach ( $referenced as $reference ) {
 			$referenced_by[] = (object) array(
@@ -257,7 +257,7 @@ class ODVR_Run_Repository extends ODVR_Repository {
 					'reasons'       => $reasons,
 					'referenced_by' => $referenced_by,
 				),
-				'deletion_error'        => null,
+				'deletion_error'        => get_option( 'odvr_deletion_error_' . $this->integer( $row['id'], true ), null ),
 			)
 		);
 		$this->validate(

@@ -12,6 +12,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 /** ローカルfilesystemと固定inodeのRunロックを扱う。 */
 final class ODVR_Storage extends ODVR_Repository {
 	/**
+	 * 明示Uninstall専用。停止と削除選択の後に現在サイトの私有ルートを回収する。
+	 *
+	 * @return true|WP_Error 結果.
+	 */
+	public function delete_site_root() {
+		return $this->read(
+			function () {
+				if ( ! in_array( get_option( 'odvr_delete_data_on_uninstall', false ), array( true, '1' ), true ) || ! get_option( 'odvr_deleting_site', false ) ) {
+					$this->fail( 'odvr_storage_conflict', 409 ); }
+				$this->remove_tree( $this->root() );
+				return true;
+			}
+		);
+	}
+
+	/**
 	 * 作成時のサイトuploads情報。
 	 *
 	 * @var array
@@ -305,6 +321,7 @@ final class ODVR_Storage extends ODVR_Repository {
 	public function diagnose( $http_auth = null ) {
 		$result = $this->read(
 			function () use ( $http_auth ) {
+				$this->checked( ODVR_DB::writable() );
 				$this->scope();
 				delete_option( 'odvr_storage_ready' );
 				$root     = $this->root();
@@ -415,6 +432,7 @@ final class ODVR_Storage extends ODVR_Repository {
 	public function ready() {
 		return $this->read(
 			function () {
+				$this->checked( ODVR_DB::writable() );
 				$root  = $this->root();
 				$state = get_option( 'odvr_storage_ready' );
 				$bases = array( untrailingslashit( $this->uploads['baseurl'] ) );
@@ -448,6 +466,7 @@ final class ODVR_Storage extends ODVR_Repository {
 						$run_uuid,
 						true,
 						function () use ( $run_uuid, $data, $info ) {
+							$this->checked( $this->ready() );
 							$directory = $this->directory( $this->root() . '/.staging/' . $this->uuid( $run_uuid ) );
 							$request   = wp_generate_uuid4();
 							$path      = $directory . '/' . $request . '.png';
@@ -569,6 +588,7 @@ final class ODVR_Storage extends ODVR_Repository {
 							}
 							$references = $this->rows( $wpdb->prepare( 'SELECT id FROM %i WHERE baseline_run_id = %d', ODVR_DB::table( 'suites' ), $run_id ) );
 							$references = array_merge( $references, $this->rows( $wpdb->prepare( 'SELECT id FROM %i WHERE reference_run_id = %d AND status <> %s', ODVR_DB::table( 'runs' ), $run_id, 'deleting' ) ) );
+							$references = array_merge( $references, $this->rows( $wpdb->prepare( 'SELECT DISTINCT s.run_id AS id FROM %i s JOIN %i r ON r.id = s.run_id JOIN %i b ON b.id = s.baseline_snapshot_id WHERE b.run_id = %d AND r.status <> %s', ODVR_DB::table( 'snapshots' ), ODVR_DB::table( 'runs' ), ODVR_DB::table( 'snapshots' ), $run_id, 'deleting' ) ) );
 							if ( $references ) {
 									$this->fail( 'odvr_storage_conflict', 409 );
 							}
