@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { PNG } from 'pngjs';
 import { DEFAULT_DEVICES, DEFAULT_SETTINGS } from '@odvr/shared';
-import { createContext } from '../dist/browser/context-factory.js';
+import { createContext, BROWSER_LAUNCH_OPTIONS } from '../dist/browser/context-factory.js';
 import { capturePage } from '../dist/browser/screenshot.js';
 import { compareImages } from '../dist/visual/compare.js';
 test('Chromiumで全ページ撮影・マスク・変更比較を行う', async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
   try {
     const context = await createContext(browser, DEFAULT_DEVICES[0]);
     const page = await context.newPage();
@@ -28,7 +28,7 @@ test('Chromiumで全ページ撮影・マスク・変更比較を行う', async 
 
 test('Browserのリクエストガードが内部ホストへの遷移を拒否する', async () => {
   const { installNetworkGuard } = await import('../dist/security/network-guard.js');
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
   try {
     const context = await browser.newContext({ serviceWorkers: 'block' });
     const diagnostics = await installNetworkGuard(context, ['http://127.0.0.1:12345']);
@@ -60,7 +60,7 @@ test('Runは対象の失敗後も継続し、履歴の上書きを拒否する',
 });
 
 test('Chromiumの画像読込失敗をIMAGE_LOAD_FAILEDとして返す', async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
   try {
     const context = await createContext(browser, DEFAULT_DEVICES[0]);
     const page = await context.newPage();
@@ -103,7 +103,7 @@ function gate() {
 const fixtureSettings = { ...DEFAULT_SETTINGS, image_timeout_ms: 2000 };
 
 test('スクロールで画像を読み込み、最上部に戻った内容を撮影する', async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
   try {
     const { page } = await fixtureContext(browser, 'lazy');
     const buffer = await capturePage(page, fixtureSettings);
@@ -114,7 +114,7 @@ test('スクロールで画像を読み込み、最上部に戻った内容を�
 });
 
 test('Lazy Load無効ではスクロールによる画像読込を開始しない', async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
   try {
     const { page } = await fixtureContext(browser, 'lazy');
     const buffer = await capturePage(page, { ...fixtureSettings, lazy_load: false });
@@ -126,7 +126,7 @@ test('Lazy Load無効ではスクロールによる画像読込を開始しな�
 });
 
 test('高さが増え続けるページも待機timeoutで終了し最上部に戻る', async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
   try {
     const { page } = await fixtureContext(browser, 'lazy', { query: '?grow' });
     await assert.rejects(capturePage(page, { ...fixtureSettings, image_timeout_ms: 250 }), error => error.code === 'IMAGE_LOAD_FAILED');
@@ -142,7 +142,7 @@ for (const resource of ['image', 'font']) {
       const { dirname, join } = await import('node:path');
       const assets = join(dirname(createRequire(import.meta.url).resolve('playwright-core/package.json')), 'lib/vite/recorder/assets');
       const font = await readFile(join(assets, (await readdir(assets)).find(name => name.endsWith('.ttf'))));
-      const browser = await chromium.launch();
+      const browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
       const requested = gate(), release = gate();
       const path = resource === 'image' ? '/blue.png' : '/font.ttf';
       try {
@@ -181,7 +181,7 @@ for (const resource of ['image', 'font']) {
 }
 
 test('ignore selectorと共通属性が両方ともピクセルをマスクする', async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
   try {
     const context = await createContext(browser, DEFAULT_DEVICES[0]);
     const page = await context.newPage();
@@ -197,7 +197,7 @@ test('ignore selectorと共通属性が両方ともピクセルをマスクす�
 });
 
 test('Deviceのviewport・DPR・mobile・touch・User Agentを反映しCSS pixelで撮影する', async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
   try {
     for (const device of [
       { ...DEFAULT_DEVICES[0], viewport_width: 320, viewport_height: 240, device_scale_factor: 2, user_agent: 'ODVR Desktop Fixture' },
@@ -219,7 +219,7 @@ test('Deviceのviewport・DPR・mobile・touch・User Agentを反映しCSS pixel
 });
 
 test('厳格なCSP下でも外部CSSを読み込みアニメーションを抑止して撮影する', async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
   try {
     const { page } = await fixtureContext(browser, 'csp', { headers: { 'content-security-policy': "default-src 'none'; style-src 'self'; script-src 'none'" } });
     const buffer = await capturePage(page, fixtureSettings);
@@ -230,55 +230,173 @@ test('厳格なCSP下でも外部CSSを読み込みアニメーションを抑�
   } finally { await browser.close(); }
 });
 
-test('Basic認証の成功・失敗と別Originの401への資格情報非送信を確認する', async () => {
-  const { createServer } = await import('node:http');
-  const { once } = await import('node:events');
-  const username = 'odvr-fixture-user', password = 'odvr-fixture-password';
-  const expected = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
-  const seen = [[], []];
-  const servers = seen.map(requests => createServer((request, response) => {
-    requests.push(request.headers.authorization ?? null);
-    if (request.headers.authorization !== expected) {
-      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="ODVR fixture"' });
-      response.end('Unauthorized');
-    } else {
-      response.writeHead(200, { 'Content-Type': 'text/html' });
-      response.end('<style>body{margin:0;background:blue}</style>');
-    }
-  }));
-  const previous = [process.env.ODVR_HTTP_AUTH_USER, process.env.ODVR_HTTP_AUTH_PASSWORD];
-  let browser;
-  try {
-    for (const server of servers) { server.listen(0, '127.0.0.1'); await once(server, 'listening'); }
-    const origins = servers.map(server => `http://127.0.0.1:${server.address().port}`);
-    process.env.ODVR_HTTP_AUTH_USER = username;
-    process.env.ODVR_HTTP_AUTH_PASSWORD = password;
-    browser = await chromium.launch();
-    const context = await createContext(browser, DEFAULT_DEVICES[0], origins[0]);
-    const page = await context.newPage();
-    assert.equal((await page.goto(origins[0])).status(), 200);
-    assert.ok(seen[0].includes(expected));
-    assert.deepEqual(pixel(await capturePage(page, fixtureSettings), 10, 10), [0, 0, 255, 255]);
-    // 認証成功後、同一Contextで別ポートのOriginへ遷移して401に挑戦させる。
-    try { assert.equal((await page.goto(origins[1])).status(), 401); }
-    catch (error) { assert.match(error.message, /ERR_INVALID_AUTH_CREDENTIALS/); }
-    assert.ok(seen[1].length > 0);
-    assert.ok(seen[1].every(value => value === null));
-    await context.close();
-    process.env.ODVR_HTTP_AUTH_PASSWORD = 'incorrect-fixture-password';
-    const failedContext = await createContext(browser, DEFAULT_DEVICES[0], origins[0]);
-    const failedPage = await failedContext.newPage();
-    const count = seen[0].length;
-    try { assert.equal((await failedPage.goto(origins[0])).status(), 401); }
-    catch (error) { assert.match(error.message, /ERR_INVALID_AUTH_CREDENTIALS/); }
-    const wrong = `Basic ${Buffer.from(`${username}:incorrect-fixture-password`).toString('base64')}`;
-    assert.ok(seen[0].slice(count).includes(wrong));
-    await failedContext.close();
-  } finally {
-    for (const [index, key] of ['ODVR_HTTP_AUTH_USER', 'ODVR_HTTP_AUTH_PASSWORD'].entries()) {
-      if (previous[index] === undefined) delete process.env[key]; else process.env[key] = previous[index];
-    }
-    if (browser) await browser.close();
-    for (const server of servers) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
+
+// 実TLSを単一RFC1918先へ固定する。公開インターネットへ試験通信を送らない。
+async function transportFixture(t, handler, limits = {}) {
+  const { createServer } = await import('node:https');
+  const { createServer: tcpServer } = await import('node:net');
+  const { networkInterfaces } = await import('node:os');
+  const { readFileSync } = await import('node:fs');
+  const { DestinationPolicy } = await import('../dist/security/destination-policy.js');
+  const { PinnedHttpClient } = await import('../dist/security/pinned-http-client.js');
+  const { installNetworkGuard } = await import('../dist/security/network-guard.js');
+  const address = Object.values(networkInterfaces()).flat().find(x => x.family === 'IPv4' && !x.internal && /^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(x.address))?.address;
+  assert.ok(address,'実RFC1918 fixtureが必要です。skipしません。');
+  const key = readFileSync(new URL('./fixtures/tls/fixture-key.pem',import.meta.url));
+  const cert = readFileSync(new URL('./fixtures/tls/fixture-cert.pem',import.meta.url));
+  const seen = [], sockets = new Set();
+  let forbiddenAccepted = 0, forbiddenUdp = 0;
+  const {createSocket} = await import('node:dgram');
+  const udp = createSocket('udp4');
+  udp.on('message',() => {forbiddenUdp++;});
+  const forbidden = tcpServer(socket => { forbiddenAccepted++; socket.destroy(); });
+  await new Promise(resolve => forbidden.listen(0,address,resolve));
+  const forbiddenUrl = `https://${address}:${forbidden.address().port}/`;
+  await new Promise(resolve => udp.bind(forbidden.address().port,address,resolve));
+  const server = createServer({key,cert},(req,res) => { seen.push({path:req.url,headers:req.headers}); handler(req,res); });
+  server.on('connection',socket => { sockets.add(socket); socket.once('close',() => sockets.delete(socket)); });
+  await new Promise(resolve => server.listen(0,address,resolve));
+  const port = server.address().port, origin = `https://fixture.test:${port}`;
+  const policy = new DestinationPolicy({captureOrigins:[origin],profile:'local',localDestination:{origin,address,port}});
+  const client = new PinnedHttpClient({policy,ca:cert,limits});
+  const browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
+  const contexts = [];
+  async function context(auth, targetKey = '1:1') {
+    const value = await createContext(browser,{...DEFAULT_DEVICES[0],viewport_width:320,viewport_height:240});
+    contexts.push(value);
+    const diagnostics = await installNetworkGuard(value,[origin],{client,targetKey,auth});
+    const page = await value.newPage();
+    return {context:value,page,diagnostics};
   }
+  t.after(async () => { client.close(); await browser.close(); for (const socket of sockets) socket.destroy(); await new Promise(resolve => server.close(resolve)); await new Promise(resolve => forbidden.close(resolve)); await new Promise(resolve => udp.close(resolve)); });
+  return {origin,seen,client,context,forbiddenUrl,forbiddenAccepted:() => forbiddenAccepted,forbiddenUdp:() => forbiddenUdp,sockets};
+}
+
+test('固定TLS取得でBasic成功・失敗、Cookie多値・path/secure、圧縮・CSPを維持する',async t => {
+  const expected = `Basic ${Buffer.from('fixture-user:fixture-password').toString('base64')}`;
+  const {gzipSync} = await import('node:zlib');
+  const f = await transportFixture(t,(req,res) => {
+    if (req.headers.authorization !== expected) { res.writeHead(401,{'WWW-Authenticate':'Basic realm="fixture"'}); res.end('Unauthorized'); return; }
+    if (req.url === '/') {
+      res.writeHead(200,{'Content-Type':'text/html','Content-Encoding':'gzip','Set-Cookie':['root=one; Path=/; Secure; HttpOnly','scoped=two; Path=/scope; Secure','foreign=never; Domain=evil.test; Path=/'], 'Content-Security-Policy':"default-src 'none'; style-src 'self'; script-src 'none'; connect-src 'self'"});
+      res.end(gzipSync('<link rel="stylesheet" href="/style.css"><script>window.untrusted=true</script><div>撮影</div>'));
+    } else if (req.url === '/style.css') { res.writeHead(200,{'Content-Type':'text/css'}); res.end('body{margin:0;background:blue}'); }
+    else { res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify(req.headers)); }
+  });
+  const auth = {kind:'basic',origin:f.origin,username:'fixture-user',password:'fixture-password'};
+  const good = await f.context(auth);
+  assert.equal((await good.page.goto(f.origin)).status(),200);
+  assert.deepEqual(pixel(await capturePage(good.page,fixtureSettings),10,10),[0,0,255,255]);
+  assert.equal(await good.page.evaluate(() => window.untrusted),undefined);
+  const cookies = await good.context.cookies();
+  assert.deepEqual(cookies.map(x => x.name).sort(),['root','scoped']);
+  const headers = await good.page.evaluate(async () => (await fetch('/scope/echo',{headers:{Authorization:'Bearer page-secret','Metadata-Flavor':'Google'}})).json());
+  assert.equal(headers.authorization,expected); assert.equal(headers['metadata-flavor'],undefined);
+  assert.ok(headers.cookie.includes('root=one')); assert.ok(headers.cookie.includes('scoped=two'));
+  const outside = await good.page.evaluate(async () => (await fetch('/echo')).json());
+  assert.equal(outside.cookie,'root=one');
+  await assert.rejects(good.page.goto(f.forbiddenUrl,{timeout:2000}));
+  assert.equal(f.forbiddenAccepted(),0);
+  assert.equal(good.diagnostics.blocked_resource_reasons.ORIGIN_BLOCKED,1);
+  const bad = await f.context({...auth,password:'wrong'},'2:1');
+  const response = await bad.page.goto(f.origin);
+  assert.equal(response.status(),401);
+  assert.ok(f.seen.some(x => x.headers.authorization === `Basic ${Buffer.from('fixture-user:wrong').toString('base64')}`));
+  assert.ok(f.seen.every(x => x.headers.host === new URL(f.origin).host));
+});
+
+test('Context全HTTPのiframe・popup初回・worker・fetch/XHR・beacon・画像/CSSを固定取得する',async t => {
+  const f = await transportFixture(t,(req,res) => {
+    if (req.url === '/worker.js') { res.writeHead(200,{'Content-Type':'text/javascript'}); res.end("fetch('/worker-fetch').then(() => postMessage('done'))"); }
+    else if (req.url === '/') { res.writeHead(200,{'Content-Type':'text/html'}); res.end('<link rel="stylesheet" href="/style.css"><iframe src="/frame"></iframe><img src="/image.svg">'); }
+    else if (req.url === '/style.css') { res.writeHead(200,{'Content-Type':'text/css'}); res.end('body{background:blue}'); }
+    else if (req.url === '/image.svg') { res.writeHead(200,{'Content-Type':'image/svg+xml'}); res.end('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>'); }
+    else { res.writeHead(200,{'Content-Type':'text/html'}); res.end('fixture'); }
+  });
+  const {page,context,diagnostics} = await f.context();
+  await page.goto(f.origin,{waitUntil:'load'});
+  const popupPromise = context.waitForEvent('page');
+  await page.evaluate(() => window.open('/popup'));
+  const popup = await popupPromise; await popup.waitForLoadState('domcontentloaded');
+  await page.evaluate(async () => {
+    await fetch('/fetch');
+    await new Promise(resolve => { const xhr = new XMLHttpRequest(); xhr.open('GET','/xhr'); xhr.onload=resolve; xhr.send(); });
+    await new Promise((resolve,reject) => { const worker = new Worker('/worker.js'); worker.onmessage=() => { worker.terminate(); resolve(); }; worker.onerror=reject; });
+    navigator.sendBeacon('/beacon','fixture-only');
+  });
+  await page.waitForFunction(() => document.images[0].complete);
+  // Beacon完了を実serverの受信で確認する。
+  for (let i=0;i<100 && !f.seen.some(x => x.path === '/beacon');i++) await new Promise(resolve => setTimeout(resolve,10));
+  for (const path of ['/frame','/popup','/worker.js','/worker-fetch','/fetch','/xhr','/beacon','/image.svg','/style.css']) assert.ok(f.seen.some(x => x.path===path),path);
+  assert.equal(diagnostics.blocked_resource_count,0);
+  assert.equal(f.forbiddenAccepted(),0);
+});
+
+test('未許可・Metadataへの全入口とredirectを拒否しWS/SW/WebRTC/WebTransportを抑止する',async t => {
+  const f = await transportFixture(t,(req,res) => {
+    if (req.url === '/meta') { res.writeHead(200,{'Content-Type':'text/html'});res.end(`<meta http-equiv="refresh" content="0;url=${f.forbiddenUrl}">`); }
+    else if (req.url === '/js') { res.writeHead(200,{'Content-Type':'text/html'});res.end(`<script>location.href=${JSON.stringify(f.forbiddenUrl)}</script>`); }
+    else if (req.url === '/redirect') { res.writeHead(302,{Location:f.forbiddenUrl}); res.end(); }
+    else if (req.url === '/worker.js') { res.writeHead(200,{'Content-Type':'text/javascript'}); res.end(`fetch(${JSON.stringify(f.forbiddenUrl)}).catch(async () => { const wsFailed=await new Promise(resolve => { const ws=new WebSocket(${JSON.stringify(f.forbiddenUrl.replace('https:','wss:'))}); ws.onerror=() => resolve(true); ws.onopen=() => {ws.close();resolve(false);}; }); let failed=false; try { const transport=new WebTransport(${JSON.stringify(f.forbiddenUrl)}); await transport.ready; transport.close(); } catch { failed=true; } postMessage({failed,wsFailed,rtc:typeof RTCPeerConnection}); })`); }
+    else { res.writeHead(200,{'Content-Type':'text/html'}); res.end('fixture'); }
+  });
+  const {page,context,diagnostics} = await f.context();
+  await page.goto(f.origin);
+  await page.evaluate(async blocked => {
+    await Promise.all([fetch(blocked).catch(() => {}),fetch('http://169.254.169.254/').catch(() => {}),fetch('http://metadata.google.internal/').catch(() => {})]);
+    const frame = document.createElement('iframe'); frame.src=blocked; document.body.append(frame);
+    const image = new Image(); image.src=blocked; document.body.append(image);
+    navigator.sendBeacon(blocked,'fixture-only');
+    window.open(blocked);
+    new WebSocket(blocked.replace('https:','wss:'));
+    window.protocols = [typeof RTCPeerConnection,typeof WebTransport];
+    try { window.swResult=typeof await navigator.serviceWorker.register('/sw.js'); } catch { window.swResult='rejected'; }
+    window.blobWorkerBlocked = await new Promise(resolve => { const source = URL.createObjectURL(new Blob(['postMessage(1)'],{type:'text/javascript'})); const worker=new Worker(source); worker.onerror=() => {URL.revokeObjectURL(source);worker.terminate();resolve(true);}; worker.onmessage=() => {URL.revokeObjectURL(source);worker.terminate();resolve(false);}; });
+    window.workerProtocols = await new Promise((resolve,reject) => { const w=new Worker('/worker.js'); w.onmessage=e => {w.terminate();resolve(e.data);}; w.onerror=reject; });
+  },f.forbiddenUrl);
+  assert.deepEqual(await page.evaluate(() => window.protocols),['undefined','undefined']);
+  assert.deepEqual(await page.evaluate(() => window.workerProtocols),{failed:true,wsFailed:true,rtc:'undefined'});
+  assert.ok(['undefined','rejected'].includes(await page.evaluate(() => window.swResult)));
+  assert.equal(context.serviceWorkers().length,0);
+  assert.equal(await page.evaluate(() => window.blobWorkerBlocked),true);
+  for(const path of ['/meta','/js']) { const denied=page.waitForEvent('requestfailed',request => request.url() === f.forbiddenUrl); await page.goto(f.origin+path,{waitUntil:'domcontentloaded'}).catch(error => assert.match(error.message,/interrupted|ERR_BLOCKED_BY_CLIENT/)); await denied; }
+  await assert.rejects(page.goto(`${f.origin}/redirect`,{timeout:2000}));
+  assert.equal(diagnostics.navigation_error_code,'REDIRECT_BLOCKED');
+  assert.ok(diagnostics.blocked_resource_reasons.ORIGIN_BLOCKED>=3);
+  assert.equal(diagnostics.blocked_resource_reasons.REDIRECT_BLOCKED,1);
+  assert.equal(f.forbiddenAccepted(),0);
+  assert.equal(f.forbiddenUdp(),0);
+  assert.ok(!f.seen.some(x => x.path === '/sw.js'));
+});
+
+test('fulfillで欠落CORSを自動許可せず、明示CORSだけブラウザに許可する',async t => {
+  const f = await transportFixture(t,(req,res) => {
+    res.writeHead(200,req.url === '/allowed' ? {'Access-Control-Allow-Origin':'null'} : {}); res.end('fixture');
+  });
+  const {page} = await f.context();
+  // about:blankのOriginはnull。取得先は同じ許可fixtureだがcross-originとなる。
+  const result = await page.evaluate(async origin => {
+    const outcomes = [];
+    for (const path of ['/denied','/allowed']) try { outcomes.push(await (await fetch(origin+path)).text()); } catch { outcomes.push('blocked'); }
+    return outcomes;
+  },f.origin);
+  assert.deepEqual(result,['blocked','fixture']);
+});
+
+test('Context終了・Target期限で取得中socketを破棄し、共有Runの別Contextは維持する',async t => {
+  let started;
+  const waiting = new Promise(resolve => {started=resolve;});
+  const f = await transportFixture(t,(req,res) => { if(req.url === '/hang') started(); else {res.writeHead(200,{'Content-Type':'text/html'});res.end('fixture');} },{targetMs:800,requestMs:2000});
+  const first = await f.context(undefined,'1:1');
+  const navigation = first.page.goto(`${f.origin}/hang`).catch(() => {});
+  await waiting;
+  assert.equal(f.client.activeConnections,1);
+  await first.context.close(); await navigation;
+  for(let i=0;i<100 && f.client.activeConnections;i++) await new Promise(resolve => setTimeout(resolve,10));
+  assert.equal(f.client.activeConnections,0);
+  const second = await f.context(undefined,'2:1');
+  assert.equal((await second.page.goto(f.origin)).status(),200);
+  await assert.rejects(second.page.goto(`${f.origin}/hang`,{timeout:3000}));
+  assert.equal(second.diagnostics.navigation_error_code,'NETWORK_TIMEOUT');
+  assert.equal(f.client.activeConnections,0);
 });

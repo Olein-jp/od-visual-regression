@@ -1,6 +1,6 @@
 # 検査済みIPに固定するHTTP transport
 
-Issue #34で、[ネットワーク設計](network-security-design.md)の用途別policyと固定HTTP clientを実装した。ブラウザの取得置換は#35、製品APIクライアントは#36、クラウドの経路・firewall実測は#39で接続する。
+Issue #34で、[ネットワーク設計](network-security-design.md)の用途別policyと固定HTTP clientを実装した。ブラウザの取得置換は#35で実装した。製品APIクライアントは#36、クラウドの経路・firewall実測は#39で接続する。
 
 ## 接続と境界
 
@@ -51,4 +51,4 @@ node --test apps/runner/tests/pinned-http-client.test.mjs apps/runner/tests/secu
 
 DNS切替試験は注入したresolverと接続境界で、公開literalを一度だけ渡し、検査後に回答をMetadataへ切り替えても再解決しないこと、次の要求では接続関数へ到達しないことを確認する。公開IPv6の分類・pin・peer照合も検証する。他者の公開IPへ試験通信は送らない。
 
-クラウドで公開IP/IPv6の実経路、DNS resolver、VPCとMetadataの遮断を実測済みとは扱わない。既存ブラウザguardは#35が完了するまで旧方式であり、#34だけで全ブラウザ通信が固定済みとは扱わない。
+クラウドで公開IP/IPv6の実経路、DNS resolver、VPCとMetadataの遮断を実測済みとは扱わない。ブラウザ境界の検証範囲と制限は[ブラウザ固定取得](browser-network-transport.md)に記載する。

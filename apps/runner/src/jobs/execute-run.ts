@@ -4,10 +4,11 @@ import { join, resolve } from 'node:path';
 import { chromium, type Browser } from 'playwright';
 import type { NetworkDiagnostics, PrototypeManifest, SnapshotErrorCode } from '@odvr/shared';
 import { SnapshotError, classifyError, safeUrl, urlFingerprint } from '../errors.js';
-import { createContext } from '../browser/context-factory.js';
+import { createContext, captureAuth, BROWSER_LAUNCH_OPTIONS } from '../browser/context-factory.js';
 import { capturePage } from '../browser/screenshot.js';
 import { installNetworkGuard } from '../security/network-guard.js';
-import { validateDestination } from '../security/url-validator.js';
+import { DestinationPolicy } from '../security/destination-policy.js';
+import { PinnedHttpClient } from '../security/pinned-http-client.js';
 import { compareImages } from '../visual/compare.js';
 import { decodeImage } from '../visual/normalize-image.js';
 import { inspectBaseline, loadBaseline } from './baseline.js';
@@ -32,6 +33,7 @@ export async function executeRun(manifest: PrototypeManifest, output: string, ba
   const planned = queue.length;
   const results: Record<string, unknown>[] = [];
   let browser: Browser | undefined;
+  let transport: PinnedHttpClient | undefined;
   let versions: { runner_version: string | null; playwright_version: string | null; chromium_version: string | null } = { runner_version: null, playwright_version: null, chromium_version: null };
   let runError: ReturnType<typeof runFailure> | null = null;
   let cleanupError: ReturnType<typeof runFailure> | null = null;
@@ -41,10 +43,13 @@ export async function executeRun(manifest: PrototypeManifest, output: string, ba
     versions.runner_version = require('../../package.json').version as string;
     versions.playwright_version = require('playwright/package.json').version as string;
     stage = 'BROWSER_LAUNCH_FAILED';
-    browser = await chromium.launch();
+    browser = await chromium.launch(BROWSER_LAUNCH_OPTIONS);
+    transport = new PinnedHttpClient({policy:new DestinationPolicy({captureOrigins:manifest.allowed_origins})});
     stage = 'RUN_FAILED';
     const captureVersions = { runner_version: versions.runner_version, playwright_version: versions.playwright_version, chromium_version: browser.version() };
     versions = captureVersions;
+    const auth = captureAuth(process.env.ODVR_HTTP_AUTH_ORIGIN ?? new URL(manifest.targets[0].url).origin);
+    if (auth?.kind === 'basic') new DestinationPolicy({captureOrigins:manifest.allowed_origins}).validate(auth.origin,'capture');
     const referenceRun = baseline ? await loadBaseline(baseline) : undefined;
     const workers = await Promise.allSettled(Array.from({ length: manifest.settings.concurrency }, async () => {
       for (;;) {
@@ -58,10 +63,10 @@ export async function executeRun(manifest: PrototypeManifest, output: string, ba
         let stage: SnapshotErrorCode = 'SNAPSHOT_FAILED';
         let crashed = false;
         try {
-          await validateDestination(target.url, manifest.allowed_origins);
+          new DestinationPolicy({captureOrigins:manifest.allowed_origins}).validate(target.url,'capture');
           stage = 'BROWSER_ERROR';
-          context = await createContext(browser!, device, new URL(target.url).origin);
-          diagnostics = await installNetworkGuard(context, manifest.allowed_origins);
+          context = await createContext(browser!, device);
+          diagnostics = await installNetworkGuard(context, manifest.allowed_origins, {client:transport!,targetKey:`${target.id}:${device.id}`,auth});
           const page = await context.newPage();
           page.on('crash', () => { crashed = true; });
           stage = 'NAVIGATION_TIMEOUT';
@@ -119,6 +124,7 @@ export async function executeRun(manifest: PrototypeManifest, output: string, ba
   } catch {
     runError = runFailure(stage);
   } finally {
+    transport?.close();
     try { await browser?.close(); }
     catch {
       cleanupError = runFailure('BROWSER_CLOSE_FAILED');

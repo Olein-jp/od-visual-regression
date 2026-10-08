@@ -9,6 +9,8 @@ import { PNG } from 'pngjs';
 import { DEFAULT_DEVICES, DEFAULT_SETTINGS } from '@odvr/shared';
 import { SnapshotError, classifyError, safeUrl } from '../dist/errors.js';
 import { validateDestination } from '../dist/security/url-validator.js';
+import { PinnedHttpClient } from '../dist/security/pinned-http-client.js';
+import { validateUrl } from '../dist/security/url-validator.js';
 import { installNetworkGuard } from '../dist/security/network-guard.js';
 import { executeRun } from '../dist/jobs/execute-run.js';
 const origin = 'https://8.8.8.8';
@@ -23,6 +25,7 @@ function browserFixture(scenarios) {
       const scenario = scenarios[index++];
       let crash, routeHandler;
       return {
+        addInitScript: async () => {}, once: () => {},
         route: async (_, handler) => { routeHandler = handler; }, routeWebSocket: async () => {},
         close: async () => { if (scenario.cleanup) throw secretError; },
         newPage: async () => ({
@@ -31,8 +34,9 @@ function browserFixture(scenarios) {
             if (scenario.blocked) {
               const frame = { page: () => ({ mainFrame: () => frame }) };
               await routeHandler({
-                request: () => ({ url: () => scenario.redirect ? secretUrl : 'https://outside.example/?token=secret', isNavigationRequest: () => Boolean(scenario.redirect), frame: () => frame }),
-                fetch: async () => ({ status: () => 302, dispose: async () => {} }),
+                request: () => ({ url: () => scenario.redirect ? secretUrl : 'https://outside.example/?token=secret', isNavigationRequest: () => Boolean(scenario.redirect), frame: () => frame, method: () => 'GET', headersArray: async () => [], postDataBuffer: () => null }),
+                fetch: async () => {throw new Error('直接通信へ戻ってはいけません');},
+                continue: async () => {throw new Error('直接通信へ戻ってはいけません');},
                 abort: async () => {}, fulfill: async () => {},
               });
               if (scenario.redirect) throw secretError;
@@ -72,25 +76,27 @@ test('URL・Origin・IP・DNSの拒否理由を識別する', async () => {
 });
 test('ガードはURLを保持せず、Origin・redirect・通信・HTTP・WebSocketの失敗件数を返す', async () => {
   let handler, websocket;
-  const diagnostics = await installNetworkGuard({ route: async (_, callback) => { handler = callback; }, routeWebSocket: async (_, callback) => { websocket = callback; } }, [origin]);
-  let disposed = 0, aborted = 0;
+  let current;
+  const client = {request:async input => {validateUrl(input.url,[origin]); if(current.error) throw current.error; if(current.status>=300 && current.status<400) throw new SnapshotError('REDIRECT_BLOCKED',current.status); return {status:current.status,headers:[],body:Buffer.alloc(0)};}};
+  const diagnostics = await installNetworkGuard({ once: () => {}, route: async (_, callback) => { handler = callback; }, routeWebSocket: async (_, callback) => { websocket = callback; } }, [origin],{client});
+  let fulfilled = 0, aborted = 0;
   for (const [url, status, error, navigation] of [
     ['https://outside.example/?password=secret', 200, null, false],
-    [secretUrl, 302, null, true], [secretUrl, 200, new Error('Timeout exceeded secret'), true], [secretUrl, 200, new Error('ENOTFOUND secret'), true],
+    [secretUrl, 302, null, true], [secretUrl, 200, new SnapshotError('NETWORK_TIMEOUT'), true], [secretUrl, 200, new Error('ENOTFOUND secret'), true],
     [secretUrl, 200, new Error('ERR_CERT_INVALID secret'), false], [secretUrl, 404, null, false],
   ]) {
+    current={status,error};
     const frame = { page: () => ({ mainFrame: () => frame }) };
     await handler({
-      request: () => ({ url: () => url, isNavigationRequest: () => navigation, frame: () => frame }),
-      fetch: async () => { if (error) throw error; return { status: () => status, dispose: async () => { disposed++; } }; },
-      abort: async () => { aborted++; throw secretError; }, fulfill: async () => {},
+      request: () => ({ url: () => url, isNavigationRequest: () => navigation, frame: () => frame, method: () => 'GET', headersArray: async () => [], postDataBuffer: () => null }),
+      abort: async () => { aborted++; throw secretError; }, fulfill: async () => {fulfilled++;},
     });
   }
   websocket({ close: () => {} });
   assert.equal(aborted, 5);
-  assert.equal(disposed, 2);
+  assert.equal(fulfilled, 1);
   assert.equal(diagnostics.blocked_resource_count, 7);
-  assert.deepEqual(diagnostics.blocked_resource_reasons, { ORIGIN_BLOCKED: 1, REDIRECT_BLOCKED: 1, NAVIGATION_TIMEOUT: 1, DNS_ERROR: 1, TLS_ERROR: 1, HTTP_ERROR: 1, RESOURCE_BLOCKED: 1 });
+  assert.deepEqual(diagnostics.blocked_resource_reasons, { ORIGIN_BLOCKED: 1, REDIRECT_BLOCKED: 1, NETWORK_TIMEOUT: 1, DNS_ERROR: 1, TLS_ERROR: 1, HTTP_ERROR: 1, RESOURCE_BLOCKED: 1 });
   assert.equal(diagnostics.navigation_error_code, 'DNS_ERROR');
   assert.ok(!JSON.stringify(diagnostics).includes('secret'));
 });
@@ -135,6 +141,8 @@ test('Runは各段階の失敗・成功・HTTP Status・duration・metadataを�
 test('ブロックされた副リソースは正常撮影にせず、主文書のredirectはHTTP Statusと拒否理由を残す', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'odvr-blocked-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
+  const transport = mock.method(PinnedHttpClient.prototype,'request',async input => {validateUrl(input.url,[origin]);throw new SnapshotError('REDIRECT_BLOCKED',302);});
+  t.after(() => transport.mock.restore());
   const launch = mock.method(chromium, 'launch', async () => browserFixture([{ blocked: true }, { blocked: true, redirect: true }, {}]));
   t.after(() => launch.mock.restore());
   const report = await executeRun({ targets: [1, 2, 3].map(id => ({ id, label: '対象', url: secretUrl })), devices: [DEFAULT_DEVICES[0]], settings: { ...DEFAULT_SETTINGS, concurrency: 1, lazy_load: false }, allowed_origins: [origin] }, join(directory, 'run'));
