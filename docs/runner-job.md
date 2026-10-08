@@ -21,7 +21,7 @@ Job は `ODVR_JOB_CONFIG`（既定 `/etc/odvr/runner.json`）の運用者設定�
 
 `secret_project` は Secret Manager が返す resource 名と一致する固定 project 番号を使用する。Runner は ADC を使う公式 Secret Manager SDK 6.3.0 で、固定 endpoint の数値 version を一度読み、10 秒 timeout・SDK retry 無効・CRC32C・応答 resource 名・43 byte の Token 形式を検査する。API・IAM の運用検証は #39。Google の[version 取得](https://docs.cloud.google.com/secret-manager/docs/access-secret-version)と[データ整合性](https://docs.cloud.google.com/secret-manager/docs/data-integrity)に従う。この Google 秘密取得は起動時の専用経路であり、撮影先や WordPress の応答から Google API を呼ばない。
 
-Job の非秘密環境値は `ODVR_SITE_ID`、`ODVR_RUN_UUID`、`ODVR_TOKEN_EXPIRES_AT`（UTC ISO、現在から最大90分）、`ODVR_RUN_SECRET_VERSION`。callback override を使う場合は `ODVR_CALLBACK_BASE` が登録値と完全一致すること。Secret 名は `odvr-run-{site_id の SHA256 先頭24桁}-{run_uuid}`、固定 project の `versions/{正整数}` だけを許す。別 site/Run、latest、任意 project を拒否する。Cloud Run が注入する `CLOUD_RUN_EXECUTION` を使い、Task index=0/count=1 を要求する。長期鍵と SDK debug 出力を許可しない。
+Job の非秘密環境値は `ODVR_SITE_ID`、`ODVR_RUN_UUID`、`ODVR_TOKEN_EXPIRES_AT`（UTC ISO、署名時計の±5分を含み現在から最大95分。実際の処理は最大90分とManifestの期限で打ち切る）、`ODVR_RUN_SECRET_VERSION`。callback override を使う場合は `ODVR_CALLBACK_BASE` が登録値と完全一致すること。Secret 名は `odvr-run-{site_id の SHA256 先頭24桁}-{run_uuid}`、固定 project の `versions/{正整数}` だけを許す。別 site/Run、latest、任意 project を拒否する。Cloud Run が注入する `CLOUD_RUN_EXECUTION` を使い、Task index=0/count=1 を要求する。長期鍵と SDK debug 出力を許可しない。
 
 ローカルでは profile を `local`、`local_secret_directory` を専用 tmpfs の絶対パスにし、`local_destination` に `{origin,address,port}` を設定する。単一 RFC1918 IPv4 先だけを固定し、Cloud Run 環境での例外を拒否する。`ODVR_LOCAL_EXECUTION_ID` を launcher が生成する。秘密は同じ固定 Secret 名の 0600 通常ファイルへ置き、read-only で共有する。Token を平文の環境値・引数へ渡さない。ローカルの HTTP 例外はダミー資格情報だけで使う。Basic の Credentials 契約は HTTPS Origin を要求するため、Basic の結合試験にはローカル TLS を使用する。
 

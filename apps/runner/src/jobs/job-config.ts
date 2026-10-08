@@ -67,7 +67,7 @@ export async function loadJob(environment:NodeJS.ProcessEnv=process.env,secretRe
     const expiry=environment.ODVR_TOKEN_EXPIRES_AT ?? '';
     if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(expiry)) throw new JobConfigurationError();
     const tokenExpiresAt=Date.parse(expiry);
-    if(!Number.isFinite(tokenExpiresAt) || tokenExpiresAt<=Date.now() || tokenExpiresAt>Date.now()+5400000) throw new JobConfigurationError();
+    if(!Number.isFinite(tokenExpiresAt) || tokenExpiresAt<=Date.now() || tokenExpiresAt>Date.now()+5700000) throw new JobConfigurationError();
     new DestinationPolicy({controlBase:site.callback_base,captureOrigins:!cloud && registration.local_destination ? [registration.local_destination.origin]:[],profile:registration.profile,localDestination:registration.local_destination});
     let token:string;
     if(cloud) {

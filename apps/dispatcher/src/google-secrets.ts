@@ -1,0 +1,37 @@
+import { createHash } from 'node:crypto';
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+import { crc32c,runSecretName } from '@odvr/runner/jobs/job-config';
+import type { Acceptance,SecretStore,SecretMetadata } from './types.js';
+import { DispatchError } from './types.js';
+import type { DispatcherConfig } from './config.js';
+const rpc={timeout:5000,retry:null};
+const code=(error:unknown)=>Number((error as {code?:number})?.code);
+export function labels(record:Acceptance):Record<string,string>{return {odvr_owner:'dispatcher-v1',site_sha:createHash('sha256').update(record.site_id).digest('hex').slice(0,24),run_uuid:record.run_uuid,request_sha_a:record.digest.slice(0,32),request_sha_b:record.digest.slice(32)};}
+export function metadataMatches(record:Acceptance,metadata:SecretMetadata):boolean {return metadata.expires_at===record.expires_at && Object.entries(labels(record)).every(([key,value])=>metadata.labels[key]===value);}
+export function timestampMillis(value:{seconds?:unknown;nanos?:number|null}|null|undefined):number{const seconds=Number(value?.seconds?.toString());const nanos=value?.nanos ?? 0;const millis=seconds*1000+Math.floor(nanos/1000000);if(!Number.isSafeInteger(millis) || !Number.isInteger(nanos) || nanos<0 || nanos>=1000000000)throw new DispatchError('odvr_dispatch_unavailable',503,true);return millis;}
+export class GoogleSecretStore implements SecretStore {
+  readonly #client:SecretManagerServiceClient;
+  readonly #shared:Set<string>;
+  constructor(readonly config:DispatcherConfig){this.#client=new SecretManagerServiceClient({projectId:config.secret_project,apiEndpoint:'secretmanager.googleapis.com',universeDomain:'googleapis.com'});this.#shared=new Set(Object.values(config.sites).flatMap(site=>[...site.shared_versions]));}
+  name(record:Acceptance):string{return `projects/${this.config.secret_project}/secrets/${runSecretName(record.site_id,record.run_uuid)}`;}
+  async shared(resource:string):Promise<Buffer>{if(!this.#shared.has(resource))throw new DispatchError('odvr_dispatch_unavailable',503,true);const [value]=await this.#client.accessSecretVersion({name:resource},rpc);const data=value.payload?.data;const buffer=typeof data==='string' ? Buffer.from(data,'base64'):data ? Buffer.from(data):Buffer.alloc(0);if(value.name!==resource || buffer.length<32 || buffer.length>4096 || value.payload?.dataCrc32c?.toString()!==String(crc32c(buffer))){buffer.fill(0);throw new DispatchError('odvr_dispatch_unavailable',503,true);}return buffer;}
+  async create(record:Acceptance):Promise<void>{
+    if(record.expires_at-Date.now()<60000)throw new DispatchError('odvr_dispatch_unavailable',503,false);
+    try{await this.#client.createSecret({parent:`projects/${this.config.secret_project}`,secretId:runSecretName(record.site_id,record.run_uuid),secret:{replication:{automatic:{}},expireTime:{seconds:record.expires_at/1000},labels:labels(record)}},rpc);}catch(error){if(code(error)!==6)throw error;}
+  }
+  async inspect(record:Acceptance):Promise<SecretMetadata|null>{try{const [value]=await this.#client.getSecret({name:this.name(record)},rpc);if(value.name!==this.name(record))throw new DispatchError('odvr_secret_ownership_conflict',503,false);return {name:value.name,expires_at:timestampMillis(value.expireTime),labels:value.labels ?? {}};}catch(error){if(code(error)===5)return null;throw error;}}
+  async versions(record:Acceptance):Promise<string[]>{const [values,,response]=await this.#client.listSecretVersions({parent:this.name(record),pageSize:3},{...rpc,autoPaginate:false});if(response?.nextPageToken || values.length>1)throw new DispatchError('odvr_secret_ownership_conflict',503,false);return values.filter(value=>value.state===1).map(value=>{const name=value.name ?? '';if(!new RegExp('^'+this.name(record).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'/versions/[1-9][0-9]*$').test(name))throw new DispatchError('odvr_secret_ownership_conflict',503,false);return name;});}
+  async add(record:Acceptance,token:string):Promise<string>{if(!/^[A-Za-z0-9_-]{43}$/.test(token))throw new DispatchError('odvr_invalid_payload',400);const bytes=Buffer.from(token);try{const [version]=await this.#client.addSecretVersion({parent:this.name(record),payload:{data:bytes,dataCrc32c:crc32c(bytes)}},rpc);if(version.name!==this.name(record)+'/versions/1')throw new DispatchError('odvr_secret_ownership_conflict',503,false);return version.name;}finally{bytes.fill(0);}}
+  async grant(record:Acceptance):Promise<void>{
+    const metadata=await this.inspect(record);if(!metadata || !metadataMatches(record,metadata) || !record.secret_version || !(await this.versions(record)).includes(record.secret_version))throw new DispatchError('odvr_secret_ownership_conflict',503,false);
+    const [policy]=await this.#client.getIamPolicy({resource:this.name(record),options:{requestedPolicyVersion:3}},rpc);
+    const member=`serviceAccount:${this.config.job.runner_service_account}`;
+    if((policy.bindings ?? []).some(binding=>binding.role!=='roles/secretmanager.secretAccessor' || binding.members?.length!==1 || binding.members[0]!==member))throw new DispatchError('odvr_secret_ownership_conflict',503,false);
+    await this.#client.setIamPolicy({resource:this.name(record),policy:{version:3,etag:policy.etag,bindings:[{role:'roles/secretmanager.secretAccessor',members:[member],condition:{title:'run-expiry',expression:`request.time < timestamp("${new Date(record.expires_at).toISOString()}")`}}]}},rpc);
+  }
+  async remove(record:Acceptance):Promise<void>{const metadata=await this.inspect(record);if(!metadata)return;if(!metadataMatches(record,metadata))throw new DispatchError('odvr_secret_ownership_conflict',503,false);await this.#delete(metadata.name);}
+  async #delete(name:string):Promise<void>{try{await this.#client.deleteSecret({name},rpc);}catch(error){if(code(error)!==5)throw error;}}
+  async orphans(cursor:string|null,limit:number):Promise<{secrets:SecretMetadata[];cursor:string|null}>{const [values,,response]=await this.#client.listSecrets({parent:`projects/${this.config.secret_project}`,filter:'labels.odvr_owner=dispatcher-v1',pageSize:Math.min(limit,100),pageToken:cursor ?? undefined},{...rpc,autoPaginate:false});return {secrets:values.map(value=>({name:value.name ?? '',expires_at:timestampMillis(value.expireTime),labels:value.labels ?? {}})),cursor:response?.nextPageToken || null};}
+  async removeOrphan(secret:SecretMetadata):Promise<void>{if(secret.expires_at>Date.now() || secret.labels.odvr_owner!=='dispatcher-v1' || !/^[a-f0-9]{24}$/.test(secret.labels.site_sha ?? '') || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(secret.labels.run_uuid ?? '') || secret.name!==`projects/${this.config.secret_project}/secrets/odvr-run-${secret.labels.site_sha}-${secret.labels.run_uuid}`)throw new DispatchError('odvr_secret_ownership_conflict',503,false);let current;try{[current]=await this.#client.getSecret({name:secret.name},rpc);}catch(error){if(code(error)===5)return;throw error;}const metadata={name:current.name ?? '',expires_at:timestampMillis(current.expireTime),labels:current.labels ?? {}};if(metadata.name!==secret.name || metadata.expires_at!==secret.expires_at || !Object.entries(secret.labels).every(([key,value])=>metadata.labels[key]===value))throw new DispatchError('odvr_secret_ownership_conflict',503,false);await this.#delete(secret.name);}
+  async close():Promise<void>{await this.#client.close();}
+}
