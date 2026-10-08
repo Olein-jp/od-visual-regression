@@ -13,7 +13,7 @@ const messages: Record<SnapshotErrorCode, string> = {
   CONTEXT_CLOSE_FAILED: 'Browser Contextの終了に失敗しました', SNAPSHOT_FAILED: 'Snapshotの処理に失敗しました',
 };
 export class SnapshotError extends Error {
-  constructor(public readonly code: SnapshotErrorCode) { super(messages[code]); }
+  constructor(public readonly code: SnapshotErrorCode, public readonly http_status?: number) { super(messages[code]); }
 }
 export function classifyError(error: unknown, fallback: SnapshotErrorCode): SnapshotError {
   if (error instanceof SnapshotError) return error;

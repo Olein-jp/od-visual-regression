@@ -302,9 +302,9 @@ Storage lockファイルはRunディレクトリの外側（サイトの非公�
 
 ## HTTP Basic認証と秘密情報
 
-WordPress側は仕様の `ODVR_HTTP_AUTH_USER` / `ODVR_HTTP_AUTH_PASSWORD` と、追加の `ODVR_HTTP_AUTH_ORIGIN` をwp-config.phpまたは運用Secret injectionで受け取る。両方未設定なら無効、片方だけ/空値/Origin不正はRun開始を拒否する。Originは同じサイトの許可されたHTTPS Origin1つで、RunnerのhttpCredentialsはそのOriginに限定する。複数Originの資格情報・ログイン後撮影は対象外。
+WordPress側は仕様の `ODVR_HTTP_AUTH_USER` / `ODVR_HTTP_AUTH_PASSWORD` と、追加の `ODVR_HTTP_AUTH_ORIGIN` をwp-config.phpまたは運用Secret injectionで受け取る。両方未設定なら無効、片方だけ/空値/Origin不正はRun開始を拒否する。Originは同じサイトの許可されたHTTPS Origin1つで、Runnerの共通HTTP transportはそのOriginだけへBasicを注入する。ブラウザ由来Authorizationを除去し、BrowserContextのhttpCredentialsには秘密を渡さない。複数Originの資格情報・ログイン後撮影は対象外。
 
-Basic認証はDispatcherへ渡さない。通常Manifest、result.jsonのconfiguration、Environment、DB履歴、Options、URL、Progress/Complete、Job引数/環境overrideにも保存しない。Runnerは自RunのCredentials APIからTLSで取得し、メモリ内でBrowserContextへ適用、実行終了時に参照を破棄する。Credentialsは期限内runningで再取得できるが、開始時の秘密を履歴固定しないため実行中の運用Secret変更は撮影失敗になり得る。変更は実行停止中に行う。
+Basic認証はDispatcherへ渡さない。通常Manifest、result.jsonのconfiguration、Environment、DB履歴、Options、URL、Progress/Complete、Job引数/環境overrideにも保存しない。Runnerは自RunのCredentials APIからTLSで取得し、メモリ内で撮影Origin限定の共通HTTP transportへ適用、実行終了時に参照を破棄する。Credentialsは期限内runningで再取得できるが、開始時の秘密を履歴固定しないため実行中の運用Secret変更は撮影失敗になり得る。変更は実行停止中に行う。
 
 Credentials例（例示用の値）：
 

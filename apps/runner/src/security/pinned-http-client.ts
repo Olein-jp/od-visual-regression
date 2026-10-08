@@ -245,7 +245,7 @@ export class PinnedHttpClient {
         for (let index=0;index<response.rawHeaders.length;index+=2) pairs.push([response.rawHeaders[index].toLowerCase(),response.rawHeaders[index+1]]);
         const status = response.statusCode ?? 0;
         if (status < 100 || status > 599) { finish(new SnapshotError('HTTP_ERROR')); return; }
-        if (status >= 300 && status < 400) { finish(new SnapshotError(status === 304 ? 'HTTP_ERROR' : 'REDIRECT_BLOCKED')); return; }
+        if (status >= 300 && status < 400) { finish(new SnapshotError(status === 304 ? 'HTTP_ERROR' : 'REDIRECT_BLOCKED',status)); return; }
         if (headerSize(pairs) > this.limits.headers || (response.headers['content-length'] && Number(response.headers['content-length']) > limit)) { finish(new SnapshotError('NETWORK_LIMIT_EXCEEDED')); return; }
         const encoding = method === 'HEAD' || status === 204 ? 'identity' : (response.headers['content-encoding'] ?? 'identity').toLowerCase();
         if (!['identity','gzip','deflate','br'].includes(encoding)) { finish(new SnapshotError('NETWORK_ERROR')); return; }

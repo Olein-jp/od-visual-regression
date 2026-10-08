@@ -1886,7 +1886,7 @@ HTTP Auth User
 HTTP Auth Password
 ```
 
-RunnerはPlaywrightのHTTP Credentialsとして利用する。
+Runnerは検査済みIPへ固定接続する共通HTTP transportで、指定された撮影HTTPS OriginだけにBasic認証を注入する。BrowserContextのHTTP Credentialsには渡さず、ページ由来のAuthorizationは除去する。資格情報はメモリ内だけに保持し、Manifest・履歴・ログへ保存しない。
 
 可能であれば：
 

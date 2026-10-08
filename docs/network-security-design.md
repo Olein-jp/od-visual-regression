@@ -67,7 +67,7 @@ Basicは承認済み撮影HTTPS Origin一つ、Run Tokenは制御HTTPS Originと
 
 ブラウザ由来Authorization、Proxy-Authorization、Host、hop-by-hopヘッダー、Metadata-Flavorを除去し、Cookieは本来のリクエストに属する値だけ渡す。Basicは共通transportが信頼済み設定から注入し、ページが生成したAuthorizationを採用しない。APIのBearerも制御クライアントでのみ付ける。サイトのスクリプトによる任意認証ヘッダーを必要とする撮影はMVP対象外。
 
-この方式では現行`httpCredentials`だけではNodeの取得を認証できないため、§70と#4設計の「BrowserContextへ適用」は、実装時に「Origin限定の認証を共通transportへ適用」へ改訂する必要がある。秘密の取得元・スコープ・履歴へ保存しない契約は維持する。Contextへ秘密を重複保持しない。URL・ヘッダー・本文・trace/HARをログへ出さず、定型エラーのみ記録する。
+Issue #35で§70と#4設計の秘密適用先を「Origin限定の認証を共通transportへ適用」へ改訂した。秘密の取得元・スコープ・履歴へ保存しない契約は維持する。Contextへ秘密を重複保持しない。URL・ヘッダー・本文・trace/HARをログへ出さず、定型エラーのみ記録する。
 
 ## Cloud Runの多層対策と限界
 
