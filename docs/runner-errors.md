@@ -35,4 +35,22 @@ Snapshot単位で `error_code` と固定の日本語 `error_message` を保存�
 
 結果のSnapshot URLとconfigurationのTarget URLからは、全query・fragment・URL内認証情報を除去する。撮影自体には元のURLを使う。Baseline比較には `metadata.url_fingerprint`（元URLのSHA-256ダイジェスト）も使用し、query変更を検出する。従来のBaselineは従来どおりURLで比較する。ダイジェストのない従来結果は機密queryを含む可能性があるため、過去の結果ファイルは新しい処理で再生成する必要がある。
 
-検証: `npm run build` 後に `node --test apps/runner/tests/errors.test.mjs apps/runner/tests/browser.test.mjs apps/runner/tests/security.test.mjs` を実行する。
+## Run全体の失敗と結果保存
+
+出力ディレクトリを新規作成できた後は、Browserの起動・実行・終了の失敗も `result.json` に保存する。既存ディレクトリへの出力とBaselineへの上書きは、Browser起動前に拒否する。
+
+- `status`: Runに失敗、Snapshotエラー、未実行があれば `ERROR`、全件成功なら `COMPLETED`。
+- `run_error`: 主エラーの固定コード・日本語メッセージ。起動失敗は `BROWSER_LAUNCH_FAILED`、実行全体の失敗は `RUN_FAILED`、終了だけの失敗は `BROWSER_CLOSE_FAILED`。成功時は `null`。
+- `cleanup_error`: Browser終了に失敗した場合の `BROWSER_CLOSE_FAILED`。主エラーとSnapshotの失敗を上書きしない。成功時は `null`。
+- `planned_snapshots`: 予定されたTarget×Deviceの件数。
+- `total_snapshots`: 終了処理まで到達して結果を記録した件数。Snapshotエラーも含む。
+- `unexecuted_snapshots`: 予定件数から結果記録件数を引いた件数。
+- `error_snapshots`: 実行されたSnapshotのエラー件数。未実行を成功・エラーのSnapshotとして生成しない。
+
+起動失敗時はSnapshot結果が空、完了件数が0、全件が未実行となる。取得できなかったバージョンは `null`。終了失敗時は取得済みのSnapshot結果を保持する。CLIはRunまたはSnapshotの失敗で終了コード1を返す。例外の元メッセージはRunの結果とCLIにも出力しない。
+
+結果は同じ出力ディレクトリの `result.json.tmp` に排他的に書き込み、完了後にrenameで `result.json` へ置換する。書込・置換に失敗した場合は一時ファイルの削除を試み、CLIは主エラー・終了処理エラーを維持した上で `RESULT_SAVE_FAILED` を出力して終了コード1を返す。ディスク容量、権限、ディレクトリ消失等により結果自体を保存できない場合がある。renameは部分JSONの公開を防ぐが、停電・OS障害に対する永続化保証はない。
+
+SIGTERM・SIGINTの専用ハンドラーは設けていない。通常のシグナル終了、SIGKILL、プロセスクラッシュ、強制終了では終了処理や結果保存に到達する保証はなく、結果なし・一時ファイル・一部画像のみが残り得る。出力先を新しくして再実行し、残存データは運用側で確認・整理する。
+
+検証: `npm run build` 後に `node --test apps/runner/tests/run-lifecycle.test.mjs apps/runner/tests/errors.test.mjs apps/runner/tests/browser.test.mjs apps/runner/tests/security.test.mjs` を実行する。

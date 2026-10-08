@@ -157,12 +157,32 @@ test('queryを保存せず同一URLのBaseline比較を維持し、queryの変�
   await executeRun(manifest, baseline);
   const identical = await executeRun(manifest, join(directory, 'identical'), baseline);
   assert.equal(identical.snapshots[0].status, 'UNCHANGED');
+  assert.equal(identical.status, 'COMPLETED');
+  assert.equal(identical.run_error, null);
+  assert.equal(identical.cleanup_error, null);
+  assert.equal(identical.unexecuted_snapshots, 0);
   assert.equal(identical.snapshots[0].baseline_compatibility.state, 'COMPATIBLE');
   manifest.targets[0].url = `${origin}/?token=changed-secret`;
   const changed = await executeRun(manifest, join(directory, 'changed'), baseline);
   assert.equal(changed.snapshots[0].error_code, 'BASELINE_INCOMPATIBLE');
   assert.deepEqual(changed.snapshots[0].baseline_compatibility.reasons, ['target.url']);
   for (const report of [identical, changed]) assert.ok(!JSON.stringify(report).includes('secret'));
+});
+
+test('正常撮影と単一対象失敗の結果はBrowser終了失敗後も保持される', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'odvr-close-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const launch = mock.method(chromium, 'launch', async () => ({ ...browserFixture([{}, { http: 503 }]), close: async () => { throw secretError; } }));
+  t.after(() => launch.mock.restore());
+  const output = join(directory, 'run');
+  const report = await executeRun({ targets: [1, 2].map(id => ({ id, label: '対象', url: secretUrl })), devices: [DEFAULT_DEVICES[0]], settings: { ...DEFAULT_SETTINGS, concurrency: 1, lazy_load: false }, allowed_origins: [origin] }, output);
+  assert.equal(report.run_error.error_code, 'BROWSER_CLOSE_FAILED');
+  assert.equal(report.total_snapshots, 2);
+  assert.equal(report.error_snapshots, 1);
+  assert.equal(report.unexecuted_snapshots, 0);
+  assert.equal(report.snapshots[0].status, 'CAPTURED');
+  assert.equal(report.snapshots[1].error_code, 'HTTP_ERROR');
+  assert.deepEqual(JSON.parse(await readFile(join(output, 'result.json'), 'utf8')), report);
 });
 
 test('CLIの失敗ログへURL・資格情報・機密queryを出さない', () => {
