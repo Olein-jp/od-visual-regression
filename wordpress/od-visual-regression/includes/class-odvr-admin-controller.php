@@ -80,6 +80,12 @@ final class ODVR_Admin_Controller extends WP_REST_Controller {
 						),
 					)
 				);
+				// 固定Baselineの欠損理由だけを契約の許可値として返す.
+				if ( 'odvr_baseline_unavailable' === $data['code'] && 404 === $response->get_status() && preg_match( '#^/odvr/v1/runner/snapshots/[1-9][0-9]*/baseline$#D', $request->get_route() ) && isset( $data['data']['reason'] ) && in_array( $data['data']['reason'], array( 'missing', 'corrupt', 'incompatible' ), true ) ) {
+					$normalized                   = $response->get_data();
+					$normalized['data']['reason'] = $data['data']['reason'];
+					$response->set_data( $normalized );
+				}
 				if ( in_array( $response->get_status(), array( 429, 503 ), true ) ) {
 					$response->header( 'Retry-After', 30 ); }
 			}

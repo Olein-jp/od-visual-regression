@@ -67,6 +67,13 @@
             }
           },
           "minItems": 0
+        },
+        "reason": {
+          "enum": [
+            "missing",
+            "corrupt",
+            "incompatible"
+          ]
         }
       }
     }

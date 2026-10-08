@@ -375,3 +375,7 @@ Firefox、ログイン後撮影、通知、AI解析は対象外。設計採用�
 ## Issue #33 の実装
 
 固定Baseline配信・生multipart Upload・Snapshot再送・Progress/CompleteのHTTP接続と、Basic除外・生本文取得の診断を実装した。[入口・環境要件・検証範囲](runner-results-api.md)を参照する。
+
+## Issue #36 実装状況
+
+製品 Runner の固定 WordPress API client・pending 再開・Upload/Progress/Complete・Job 入口・Run 秘密 adapter を実装した。[設定・終了処理・検証範囲](runner-job.md)を参照する。Dispatcher の非秘密 override には元の Run Secret expiry を `ODVR_TOKEN_EXPIRES_AT` として含め、固定 project 番号・site/UUID から導出した数値 version と照合する。既存プロトタイプ CLI は維持する。実 Dispatcher 起動は #37、wp-env 接続は #38、Cloud 実機は #39 で検証する。

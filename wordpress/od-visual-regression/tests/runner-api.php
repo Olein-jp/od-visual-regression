@@ -182,6 +182,9 @@ function odvr_test_runner_api( $admin, $suite_id, $target_id, $device_id ) {
 	$baseline_bytes = file_get_contents( $baseline_path );
 	unlink( $baseline_path );
 	try {
+		$missing = odvr_admin_request( 0, 'GET', '/runner/snapshots/' . $baseline_id . '/baseline', null, array(), $headers );
+		odvr_admin_check( 404 === $missing->get_status() && 'missing' === $missing->get_data()['data']['reason'], '固定Baseline欠損の理由はHTTP共通エラーでも残す' );
+		odvr_admin_check( ( new ODVR_Contract_Validator() )->validate( 'error', json_decode( wp_json_encode( $missing->get_data() ) ) ), 'Baseline欠損応答は共通エラー契約を満たす' );
 		odvr_admin_check( 200 === odvr_runner_upload( $run, $body )->get_status(), '確定後に参照画像が失われても同一Uploadの受理は変えない' );
 	} finally {
 		file_put_contents( $baseline_path, $baseline_bytes );
