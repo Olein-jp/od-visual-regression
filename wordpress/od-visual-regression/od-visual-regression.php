@@ -21,16 +21,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/includes/class-odvr-capabilities.php';
+require_once __DIR__ . '/includes/class-odvr-activator.php';
+require_once __DIR__ . '/includes/class-odvr-deactivator.php';
+require_once __DIR__ . '/includes/class-odvr-plugin.php';
+
+register_activation_hook( __FILE__, array( 'ODVR_Activator', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'ODVR_Deactivator', 'deactivate' ) );
+
 /**
- * 同梱した翻訳ファイルの場所を登録する。
+ * プラグインのフックを一度だけ登録する。
  *
  * @return void
  */
-function odvr_load_textdomain() {
-	load_plugin_textdomain(
-		'od-visual-regression',
-		false,
-		dirname( plugin_basename( __FILE__ ) ) . '/languages'
-	);
+function odvr_init_plugin() {
+	static $plugin = null;
+
+	if ( null === $plugin ) {
+		$plugin = new ODVR_Plugin( __FILE__ );
+	}
+
+	$plugin->init();
 }
-add_action( 'init', 'odvr_load_textdomain' );
+add_action( 'plugins_loaded', 'odvr_init_plugin' );
