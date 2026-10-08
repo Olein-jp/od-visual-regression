@@ -8,7 +8,7 @@
 
 - `prototype-manifest.schema.json` と `PrototypeManifest` はローカル実行用。Run ID、参照Snapshot、認証、通信Versionを持たず、製品のRun Manifestとは別契約である。
 - `execute-run.ts` はローカルPNGと自由形式の結果JSONを生成する。HTTP Upload・Progress・Complete・Dispatcherは未実装。現在の結果は本書のSchemaに適合済みではない。
-- WordPressはCookie/nonce/`manage_odvr`による公開コンテンツ選択APIとURL形式検証を実装済み。DB、Run用Token、非公開Storageは未実装。
+- WordPressはCookie/nonce/`manage_odvr`による公開コンテンツ選択APIとURL形式検証を実装済み。DBとSuite/Target/Deviceは#27/#28、非公開Storage・管理画像配信は#29で実装済み。Run用Tokenは未実装。
 - WordPressが管理・保存、Dispatcherが署名済み要求の受付・Job起動、Runnerが撮影・比較を担当する。Runnerには管理APIの権限を与えない。
 - Schemaを通信の正本とし、NodeとPHPの共通fixtureで一致を検証する。DBのライフサイクル・ロック・COUNT規則は先行設計を引き継ぐ。
 
@@ -254,6 +254,8 @@ Baseline欠損を無差分0へ変換しない。NO_BASELINEで固定Snapshotが�
 CompleteはSuite→Run→Snapshotの先行設計のロック順でCOUNTと状態を確定。finishedかつpending>0は409。failedは残るpendingをRUN_ABORTEDのERRORに確定する。受理したCompleteの正規化digest（Execution/versions/outcome/errors）と最終応答をRunのenvironment JSON内 `completion` に保存する【先行設計への追加】。環境Version補完とこの制御情報だけが書換可能で、開始時の環境値は変更しない。新しいテーブル/列は追加しない。同一Completeには元のstatus/completed_at/集計を200で返し、違うCompleteには409。Deadline処理等で閉じたRunには受理済みCompleteがなく、Tokenも失効する。200応答前の障害でもcommit済みdigestで同一再送を識別する。
 
 ## 非公開Storageと競合・部分ファイル
+
+#29の実装・環境設定・検証範囲は [private-storage.md](private-storage.md) を参照する。
 
 保存先は現在サイトのwp_upload_dir().basedir配下 `od-visual-regression/suite-{uuid}/run-{uuid}/target-{id}/`。Media Libraryへ登録せず、URLをDB/APIへ保存しない。DBにはStorageルート相対パスだけ。ルート/各祖先のsymlinkを禁止し、realpath境界・固定UUID/整数/slugを検証する。0700ディレクトリ/0600ファイルは補助であり、HTTP公開拒否の代わりではない。
 
