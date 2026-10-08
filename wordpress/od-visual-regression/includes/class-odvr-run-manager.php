@@ -120,9 +120,12 @@ final class ODVR_Run_Manager extends ODVR_Run_Repository {
 				$user_id  = $this->id( $user_id );
 				$queue    = $options['queued_timeout_seconds'] ?? 900;
 				$runtime  = $options['run_timeout_seconds'] ?? 5400;
-				if ( array_diff( array_keys( $options ), array( 'queued_timeout_seconds', 'run_timeout_seconds', 'http_auth_origin' ) ) || ! is_int( $queue ) || ! is_int( $runtime ) || $queue < 1 || $queue >= $runtime || $runtime >= 7200 ) {
+				if ( array_diff( array_keys( $options ), array( 'queued_timeout_seconds', 'run_timeout_seconds', 'http_auth_origin', 'expected_site_settings_digest' ) ) || ! is_int( $queue ) || ! is_int( $runtime ) || $queue < 1 || $queue >= $runtime || $runtime >= 7200 ) {
 					$this->fail( 'odvr_invalid_deadline', 400 );
 				}
+				$expected = $options['expected_site_settings_digest'] ?? null;
+				if ( null !== $expected && ( ! is_string( $expected ) || ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ) ) {
+					$this->fail( 'odvr_invalid_payload', 400 ); }
 				$storage = new ODVR_Storage();
 				if ( is_wp_error( $storage->ready() ) ) {
 					$this->checked( $storage->diagnose( $http_auth ) );
@@ -137,8 +140,10 @@ final class ODVR_Run_Manager extends ODVR_Run_Repository {
 				$this->validate( 'stored-run-environment', $environment );
 				return $this->checked(
 					$this->transaction(
-						function () use ( $suite_id, $input, $prepared, $environment, $user_id, $queue, $runtime, $storage ) {
+						function () use ( $suite_id, $input, $prepared, $environment, $user_id, $queue, $runtime, $storage, $expected ) {
 							global $wpdb;
+							if ( null !== $expected && ! hash_equals( $expected, ODVR_Environment::digest( (object) $this->checked( ( new ODVR_Settings() )->lock_saved() ) ) ) ) {
+								$this->fail( 'odvr_configuration_changed', 409 ); }
 							$suite  = $this->row( 'suites', $suite_id, true );
 							$locked = $this->configuration_rows( $suite, true );
 							foreach ( $locked['targets'] as $target ) {

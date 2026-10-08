@@ -50,6 +50,7 @@ final class ODVR_Plugin {
 		// phpcs:ignore WordPress.WP.CronInterval.ChangeDetected -- 間隔はRun Managerで60秒と定義する.
 		add_filter( 'cron_schedules', array( 'ODVR_Run_Manager', 'cron_schedules' ) );
 		add_action( 'odvr_run_expiry', array( 'ODVR_Run_Manager', 'expiry_cron' ) );
+		add_action( 'odvr_run_expiry', array( 'ODVR_Runner_Auth', 'cleanup_cron' ), 20 );
 		if ( true === ODVR_DB::writable() && ! wp_next_scheduled( 'odvr_run_expiry' ) ) {
 			wp_schedule_event( time() + MINUTE_IN_SECONDS, 'odvr_minute', 'odvr_run_expiry' );
 		}
@@ -106,6 +107,10 @@ final class ODVR_Plugin {
 		require_once __DIR__ . '/class-odvr-image-controller.php';
 		$images = new ODVR_Image_Controller();
 		$images->register_routes();
+		require_once __DIR__ . '/class-odvr-admin-controller.php';
+		( new ODVR_Admin_Controller() )->register_routes();
+		require_once __DIR__ . '/class-odvr-runner-controller.php';
+		( new ODVR_Runner_Controller() )->register_routes();
 	}
 
 	/**

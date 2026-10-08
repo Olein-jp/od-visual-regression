@@ -328,7 +328,7 @@ PHP/Dispatcher/Runner・APM・proxyのbody/Authorization/credentialsログを無
 | 順序 | 実装範囲・予定ファイル | 必要な検証 |
 |---|---|---|
 | 1 | 共通Schema/Version/型/エラー、`packages/schemas/src/{run-manifest,snapshot-result,dispatch-request,error,progress-request,complete-request,runner-credentials,run-state}.schema.json`、`packages/shared/src/index.ts`、`scripts/validate-schemas.mjs`、`includes/class-odvr-contract-validator.php`、Node/PHP共通fixture | 必須/未知/Version/数値文字列/null/ID境界/閾値/Unicode/条件分岐を両端で同じ判定。PHP 7.4・WP 6.7と既定版 |
-| 2 | 管理API/Run固定化/Token、`includes/class-odvr-{suite,target,device,run,settings}-controller.php`、`class-odvr-run-manager.php`、`class-odvr-run-token.php`、`class-odvr-plugin.php`、`class-odvr-deactivator.php`、`tests/api-auth.php` | Cookie/nonce/権限、別サイト/別Suite、32bytes/Hashのみ/2時間境界、queued15分/総90分、無効化/失効/終端scope |
+| 2 | 管理API/Run固定化/Token、`includes/class-odvr-{suite,target,device,run,settings}-controller.php`、`class-odvr-run-manager.php`、`class-odvr-runner-auth.php`、`class-odvr-plugin.php`、`class-odvr-deactivator.php`、`tests/api-auth.php` | Cookie/nonce/権限、別サイト/別Suite、32bytes/Hashのみ/2時間境界、queued15分/総90分、無効化/失効/終端scope |
 | 3 | 非公開Storage/画像配信、`includes/class-odvr-storage.php`、`class-odvr-image-controller.php`、`class-odvr-retention.php`、`tests/storage.php`、Web設定手順文書 | Apache/Nginx/Multisite/alias/CDNの直URL、Blob認証、symlink、PNG/CRC/digest/寸法/サイズ、部分rename/rollback/cleanup、読取と削除lock競合 |
 | 4 | Runner API/Upload/COUNT/Completeとクライアント、`includes/class-odvr-runner-controller.php`、`class-odvr-snapshot-repository.php`、`apps/runner/src/jobs/execute-run.ts`、`src/api/client.ts`、`src/browser/context-factory.ts`、`tests/runner-api.php`、Runner契約テスト | Baseline固定scope、multipart重複/ERROR/比率、同時同一/異なるdigest、Progress逆順/再送、Complete早着/重複/異なる要求、期限とUpload競合、Job retry、Basic非漏洩 |
 | 5 | Dispatcher/秘密引渡し/クラウド結合、`apps/dispatcher/src/{index,auth,jobs}.ts`、`infra/`のSecret/IAM/Job設定、Dispatcher契約テスト、`docs/security.md` | raw-body HMAC/±300秒/登録callback/replay、受付不明と照合/起動中断、Execution固定、Run Secret参照・期限cleanup・IAM、Basic保護サイトのBearer経路、全ログ/履歴に秘密がないこと |
@@ -367,3 +367,7 @@ Firefox、ログイン後撮影、通知、AI解析は対象外。設計採用�
 ## Issue #31 の実装
 
 参照閉包の Retention、閉じた集合の削除確定、画像からの再開可能な削除、無効化時の失効、サイト別 Uninstall を実装した。[手順と検証範囲](retention-and-uninstall.md)を参照する。管理 API・画面への接続は後続で行う。
+
+## Issue #32 の実装
+
+管理 REST・非秘密 Settings・Run Token・Manifest/Credentials・WordPress の署名 Dispatch 送信と照合を実装した。[入口・設定・検証範囲](admin-api-and-dispatch.md)を参照する。Dispatcher の永続台帳・Job 起動と結果 Upload の HTTP 接続は後続で実装する。

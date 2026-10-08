@@ -12,6 +12,52 @@ if ( ! defined( 'ABSPATH' ) ) {
 /** ローカルfilesystemと固定inodeのRunロックを扱う。 */
 final class ODVR_Storage extends ODVR_Repository {
 	/**
+	 * 私有領域を変更せず総バイト数を確認する。上限・I/O失敗は不明として返す。
+	 *
+	 * @return int|null 使用量.
+	 */
+	public function usage_bytes() {
+		$value = $this->read(
+			function () {
+				$current = wp_upload_dir( null, false );
+				if ( $current['basedir'] !== $this->uploads['basedir'] || $current['error'] ) {
+					$this->fail( 'odvr_storage_unavailable', 503 ); }
+				$root = $this->uploads['basedir'] . '/od-visual-regression';
+				if ( is_link( $root ) ) {
+					$this->fail( 'odvr_storage_unavailable', 503 ); }
+				if ( ! file_exists( $root ) ) {
+					return 0; }
+				$this->safe( $root, true );
+				$stack   = array( $root );
+				$bytes   = 0;
+				$entries = 0;
+				$started = microtime( true );
+				while ( $stack ) {
+					$path = array_pop( $stack );
+					foreach ( new DirectoryIterator( $path ) as $file ) {
+						$name = $file->getFilename();
+						if ( '.' === $name || '..' === $name ) {
+							continue; }
+						if ( ++$entries > 10000 || microtime( true ) - $started > 2 ) {
+							$this->fail( 'odvr_storage_unavailable', 503 ); }
+						$entry = $path . '/' . $name;
+						$this->safe( $entry, is_dir( $entry ) );
+						if ( is_dir( $entry ) ) {
+							$stack[] = $entry; } else {
+							$size = filesize( $entry );
+							if ( false === $size || $size > PHP_INT_MAX - $bytes ) {
+								$this->fail( 'odvr_storage_unavailable', 503 ); }
+							$bytes += $size;
+							}
+					}
+				}
+				return $bytes;
+			}
+		);
+		return is_wp_error( $value ) ? null : $value;
+	}
+
+	/**
 	 * 明示Uninstall専用。停止と削除選択の後に現在サイトの私有ルートを回収する。
 	 *
 	 * @return true|WP_Error 結果.
