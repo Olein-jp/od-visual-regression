@@ -47,7 +47,19 @@ final class ODVR_Plugin {
 		}
 
 		add_action( 'init', array( $this, 'load_textdomain' ) );
+		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
 		$this->initialized = true;
+	}
+
+	/**
+	 * RESTクラスが読み込まれた後に選択用APIを登録する。
+	 *
+	 * @return void
+	 */
+	public function register_rest_routes() {
+		require_once __DIR__ . '/class-odvr-content-controller.php';
+		$controller = new ODVR_Content_Controller();
+		$controller->register_routes();
 	}
 
 	/**

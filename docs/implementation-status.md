@@ -6,7 +6,7 @@
 |---|---|
 | Phase 1 Runner Prototype | URL・DeviceごとのChromium全ページ撮影、ローカルPNG出力を実装 |
 | Phase 2 Visual Diff | pixelmatch、寸法正規化、差分率、判定、差分PNGを実装 |
-| Phase 3 WordPress Plugin Core | 初期化・有効化/無効化・Administrator向けmanage_odvr権限を実装。DB・管理機能は未実装 |
+| Phase 3 WordPress Plugin Core | 初期化・有効化/無効化・Administrator向けmanage_odvr権限・公開コンテンツ選択APIを実装。DB・管理画面は未実装 |
 | Phase 4 Runner API | 未実装 |
 | Phase 5 Cloud Run | 未実装 |
 | Phase 6 Admin UI | 未実装 |
@@ -27,3 +27,5 @@ Issue #2の設計案は [data-lifecycle-design.md](data-lifecycle-design.md) に
 wp-envの設定は更新しましたが、停止中だったWordPress環境の起動・マウント反映は今回検証していません。Cloud Run、WordPressへのアップロード、管理画面からの実行は未検証・未実装です。
 
 Issue #1ではWordPress実機で初期化・権限・翻訳・無効化時の保存値/ファイル保持を検証するスクリプトを追加しています。CIのWordPressジョブでもwp-envを起動して検証します。
+
+Issue #3では公開コンテンツ選択APIとCustom URLの形式検証を追加しました。契約と検証手順は [content-api.md](content-api.md) にまとめています。WordPress実機で公開CPT・検索・ページング・非公開投稿の除外・Cookie/nonce/権限・不正入力を検証し、CIでも同じ検証を実行します。
