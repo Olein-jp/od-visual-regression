@@ -24,6 +24,10 @@ Issue #2の設計案は [data-lifecycle-design.md](data-lifecycle-design.md) に
 
 Issue #4の設計案は [api-security-storage-design.md](api-security-storage-design.md) にまとめています。共通API/Schema/Version、Run Token、Snapshot再送、非公開Storageと画像配信、Basic認証の秘密受渡し、5段階の実装順序を定義しています。設計採用後に実装Issueへ分割する段階であり、製品のAPI・Schema・Storage・クラウド設定には未反映です。
 
+## Dispatcher・Cloud Run・ローカルDocker・デプロイの設計
+
+Issue #10のPhase 5設計案は [dispatcher-cloud-run-design.md](dispatcher-cloud-run-design.md) にまとめています。HMAC受付・永続台帳による重複防止、起動不明時のExecution照合、期限付きRun Secret、Service/JobのIAMとImage、既存WordPress環境へのローカル接続、path別CI・明示デプロイ・rollback、5項目の実装順序を定義しています。設計採用後に実装Issueへ分割する段階であり、Dispatcher・Docker・クラウドリソースは未実装です。
+
 ## 今回の検証
 
 2026年10月8日、Node.js 20.19.2・npm 10.8.2・Playwright 1.64.0の環境で、ビルド・Schema検証・12件のテスト・PHP構文検査・WPCSが成功しました。ChromiumのテストはmacOSの実行制限外で実施しました。公開サンプルページの撮影とBaseline比較も成功し、差分率0・UNCHANGED、PNGと差分PNGの保存を確認しています。
