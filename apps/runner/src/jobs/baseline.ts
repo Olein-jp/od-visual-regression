@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { DeviceProfile, PrototypeManifest } from '@odvr/shared';
+import { safeUrl, urlFingerprint } from '../errors.js';
 import { parseManifest } from '../config.js';
 import { decodeImage } from '../visual/normalize-image.js';
 
@@ -50,9 +51,14 @@ export async function inspectBaseline(baseline: Baseline, directory: string, man
   const configuration = baseline.configuration!;
   const oldTarget = configuration.targets.find(item => item.id === target.id);
   const oldDevice = configuration.devices.find(item => item.id === device.id);
+  const matches = baseline.snapshots!.filter(item => item.target_id === target.id && item.device_id === device.id);
+  const snapshot = matches[0];
+  const fingerprint = isRecord(snapshot?.metadata) ? snapshot.metadata.url_fingerprint : undefined;
+  const matchesUrl = (value: unknown) => fingerprint === undefined ? value === target.url :
+    value === safeUrl(target.url) && fingerprint === urlFingerprint(target.url);
   const reasons: string[] = [];
   if (!oldTarget) reasons.push('target_id');
-  else if (oldTarget.url !== target.url) reasons.push('target.url');
+  else if (!matchesUrl(oldTarget.url)) reasons.push('target.url');
   if (!oldDevice) reasons.push('device_id');
   else {
     for (const key of ['viewport_width', 'viewport_height', 'user_agent', 'device_scale_factor', 'is_mobile', 'has_touch'] as const) {
@@ -68,11 +74,9 @@ export async function inspectBaseline(baseline: Baseline, directory: string, man
     if (baseline.versions![key] !== versions[key]) reasons.push(key);
   }
   if (reasons.length) return { compatibility: outcome('INCOMPATIBLE', ...reasons) };
-  const matches = baseline.snapshots!.filter(item => item.target_id === target.id && item.device_id === device.id);
   if (!matches.length) return { compatibility: outcome('SNAPSHOT_MISSING', 'snapshots') };
-  const snapshot = matches[0];
   const path = `target-${target.id}/${oldDevice!.slug}.png`;
-  if (matches.length !== 1 || snapshot.url !== target.url || !['CAPTURED', 'UNCHANGED', 'REVIEW', 'CHANGED', 'NO_BASELINE'].includes(String(snapshot.status)) || snapshot.image_path !== path || !Number.isInteger(snapshot.width) || !Number.isInteger(snapshot.height)) {
+  if (matches.length !== 1 || !matchesUrl(snapshot.url) || !['CAPTURED', 'UNCHANGED', 'REVIEW', 'CHANGED', 'NO_BASELINE'].includes(String(snapshot.status)) || snapshot.image_path !== path || !Number.isInteger(snapshot.width) || !Number.isInteger(snapshot.height)) {
     return { compatibility: outcome('RESULT_INVALID', 'snapshot') };
   }
   let image: Buffer;
