@@ -34,6 +34,8 @@ Issue #11のPhase 6設計案は [admin-ui-design.md](admin-ui-design.md) にま�
 
 ## 今回の検証
 
+Issue #13のMVP結合検証は前提実装待ちです。DB・Run管理API・Runner API/Token・非公開画像配信・Dispatcher/Job・ローカル接続基盤・管理画面が未実装のため、WordPressからの一連の検証には着手していません。不足とMVP項目の既存検証対応、再開時の受け入れシナリオは [mvp-integration-validation.md](mvp-integration-validation.md) に記録しています。既存テストの成功や未実装機能のskipをMVP達成とは扱いません。
+
 2026年10月8日、Node.js 20.19.2・npm 10.8.2・Playwright 1.64.0の環境で、ビルド・Schema検証・12件のテスト・PHP構文検査・WPCSが成功しました。ChromiumのテストはmacOSの実行制限外で実施しました。公開サンプルページの撮影とBaseline比較も成功し、差分率0・UNCHANGED、PNGと差分PNGの保存を確認しています。
 
 wp-envの設定は更新しましたが、停止中だったWordPress環境の起動・マウント反映は今回検証していません。Cloud Run、WordPressへのアップロード、管理画面からの実行は未検証・未実装です。
