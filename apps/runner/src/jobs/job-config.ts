@@ -56,7 +56,7 @@ export async function loadJob(environment:NodeJS.ProcessEnv=process.env,secretRe
     if(!registration || registration.schema_version!==1 || !['cloud','local'].includes(registration.profile) || Object.keys(registration).some(key=>!allowed.includes(key)) || !registration.sites || Array.isArray(registration.sites)) throw new JobConfigurationError();
     const siteId=environment.ODVR_SITE_ID ?? '';const runUuid=environment.ODVR_RUN_UUID ?? '';
     const site=Object.hasOwn(registration.sites,siteId) ? registration.sites[siteId] : undefined;
-    if(!/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/.test(siteId) || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(runUuid) || !site || Object.keys(site).join()!=='callback_base') throw new JobConfigurationError();
+    if(!/^[A-Za-z0-9_-]{1,100}$/.test(siteId) || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(runUuid) || !site || Object.keys(site).join()!=='callback_base') throw new JobConfigurationError();
     if(environment.ODVR_CALLBACK_BASE!==undefined && environment.ODVR_CALLBACK_BASE!==site.callback_base) throw new JobConfigurationError();
     const cloud=registration.profile==='cloud';
     if(cloud && ['GOOGLE_SDK_NODE_LOGGING','NODE_DEBUG','GRPC_TRACE','GRPC_VERBOSITY'].some(key=>environment[key])) throw new JobConfigurationError();
