@@ -89,3 +89,24 @@ export async function inspectBaseline(baseline: Baseline, directory: string, man
   } catch { return { compatibility: outcome('IMAGE_INVALID', path) }; }
   return { compatibility: outcome('COMPATIBLE'), image };
 }
+
+/** 製品Manifestの撮影互換性。プロトタイプの保存形式は使用しない。 */
+export function productCaptureCompatible(previous: import('@odvr/shared').RunManifest, current: import('@odvr/shared').RunManifest, targetId: number, deviceId: number): boolean {
+  const oldTarget = previous.targets.find(target => target.id === targetId);
+  const target = current.targets.find(item => item.id === targetId);
+  const oldDevice = previous.devices.find(device => device.id === deviceId);
+  const device = current.devices.find(item => item.id === deviceId);
+  if (!oldTarget || !target || !oldDevice || !device || oldTarget.url !== target.url) return false;
+  for (const key of ['viewport_width', 'viewport_height', 'device_scale_factor', 'user_agent', 'is_mobile', 'has_touch'] as const) {
+    if (oldDevice[key] !== device[key]) return false;
+  }
+  for (const key of ['settings_version', 'navigation_timeout_ms', 'image_timeout_ms', 'lazy_load'] as const) {
+    if (previous.settings[key] !== current.settings[key]) return false;
+  }
+  return setValue(previous.settings.ignore_selectors) === setValue(current.settings.ignore_selectors) && setValue(previous.allowed_origins) === setValue(current.allowed_origins);
+}
+
+/** 開始時に固定された参照Versionと、今回の実Versionが全て一致すること。 */
+export function productVersionsCompatible(reference: import('@odvr/shared').RunManifest['reference']['versions'], actual: import('@odvr/shared').ProgressRequest['versions']): boolean {
+  return reference !== null && (['runner', 'playwright', 'chromium'] as const).every(key => reference[key].trim().length > 0 && reference[key] === actual[key]);
+}

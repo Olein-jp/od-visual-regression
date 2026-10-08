@@ -24,5 +24,6 @@ final class ODVR_Deactivator {
 	public static function deactivate() {
 		// 無効化時は履歴や設定を削除しない.
 		wp_clear_scheduled_hook( 'odvr_storage_cleanup' );
+		wp_clear_scheduled_hook( 'odvr_run_expiry' );
 	}
 }
