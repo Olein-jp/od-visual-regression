@@ -62,3 +62,19 @@ wp-envへ渡すプラグインの配置先を `wordpress/od-visual-regression` �
 - [Service Workerとリクエスト制御](https://playwright.dev/docs/service-workers)
 - [リダイレクトを制御するRoute API](https://playwright.dev/docs/api/class-route#route-fetch)
 - [pixelmatch](https://github.com/mapbox/pixelmatch)
+
+## 初期化・権限の検証
+
+プラグインは `plugins_loaded` で通常実行時のフックを登録し、`init` で翻訳の場所を登録します。有効化時にAdministratorへ `manage_odvr` を付与します。管理機能の権限判定には `ODVR_Capabilities::can_manage()` を使い、将来のREST APIではnonceやRunner Tokenの検証も別途行います。無効化では履歴・画像・設定・権限を削除しません。
+
+```sh
+npm run env:start
+npm run env:cli -- eval-file tests/bootstrap.php
+npm run env:stop
+```
+
+検証スクリプトは有効化済みのプラグインと開発用の単一サイト環境を前提に、通常の有効化・再有効化・無効化、初期化の重複防止、Administrator/Editor/Subscriber/未ログインの権限、日本語翻訳を確認します。保存値と画像領域に作成した確認用ファイルが無効化で削除されないことも検証します。DB・Runは未実装のため、実際のRun履歴の保持は後続のDB実装時に検証します。テスト用ユーザー・保存値・ファイルは終了時に削除します。
+
+スクリプトはAdministratorの権限を一時的に外して有効化フックによる再付与を確認するため、本番サイトでは実行しないでください。無効化しても権限は保持する設計です。Multisite・ネットワーク有効化の権限付与方式はデータ設計Issueで確定します。
+
+CIではwp-envの既定版と最低対応版のWordPress 6.7の両方で、PHP 7.4の検証を実行します。

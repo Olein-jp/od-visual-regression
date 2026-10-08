@@ -17,6 +17,9 @@ jobs:
       - run: npm test
   wordpress:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        wordpress: ['latest', '6.7']
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -26,3 +29,14 @@ jobs:
       - run: composer install --no-interaction --prefer-dist
       - run: find wordpress -name '*.php' -print0 | xargs -0 -n1 php -l
       - run: composer lint
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - if: matrix.wordpress == '6.7'
+        run: node -e "require('node:fs').writeFileSync('.wp-env.override.json', JSON.stringify({ core: 'WordPress/WordPress#6.7' }))"
+      - run: npm run env:start
+      - run: npm run env:cli -- eval-file tests/bootstrap.php
+      - if: always()
+        run: npm run env:stop
