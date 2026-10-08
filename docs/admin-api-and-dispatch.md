@@ -1,6 +1,6 @@
 # 管理 API・Run Token・署名 Dispatch
 
-Issue #32 の実装。共通契約は [api-contracts.md](api-contracts.md)、保存処理は [runs-and-baselines.md](runs-and-baselines.md) と [retention-and-uninstall.md](retention-and-uninstall.md) を参照する。Runner の Upload・Baseline PNG・Progress・Complete の HTTP 接続は #33、実 Dispatcher は #37、ローカル全体接続は #38、クラウド実機は #39 で行う。
+Issue #32 の実装。共通契約は [api-contracts.md](api-contracts.md)、保存処理は [runs-and-baselines.md](runs-and-baselines.md) と [retention-and-uninstall.md](retention-and-uninstall.md) を参照する。Runner の Upload・Baseline PNG・Progress・Complete は [#33の実装](runner-results-api.md)、実 Dispatcher は #37、ローカル全体接続は #38、クラウド実機は #39 で行う。
 
 ## 管理 API
 
@@ -56,7 +56,7 @@ Bearer header、現在サイト、Run UUID、Hash の定数時間比較、TTL、
 
 ## 接続診断と検証範囲
 
-POST `/settings/connection-test` は `{schema_version:1}` だけを受け、任意 URL や Token を拒否する。保存済み設定・秘密設定・DB/Storage の公開拒否診断を確認し、登録 Dispatcher の `/v1/connection-test` へ署名して送る。Run・Job・Run Token を作らない。DB の原子的な比較で診断間隔を 30 秒に制限する。
+Runner経路のBasic除外・Bearer転送・生multipart対応も固定callbackで検査する。[経路設定](runner-results-api.md)を参照する。POST `/settings/connection-test` は `{schema_version:1}` だけを受け、任意 URL や Token を拒否する。保存済み設定・秘密設定・DB/Storage の公開拒否診断を確認し、登録 Dispatcher の `/v1/connection-test` へ署名して送る。Run・Job・Run Token を作らない。DB の原子的な比較で診断間隔を 30 秒に制限する。
 
 `tests/admin-api.php` は WordPress の REST ディスパッチと実 DB・PNG を使い、Cookie/nonce/権限、CRUD・ページング、別 Suite/別サイト、秘密 PATCH、設定有無・使用量、Baseline 昇格と保護、Token TTL と終端再送、HTTP 拒否、CORS 抑止を確認する。PHP 7.4・WordPress 6.7 と最新版、Multisite で CI 実行する。
 

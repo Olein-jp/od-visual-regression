@@ -50,8 +50,9 @@ jobs:
       - run: npm run env:cli -- eval-file tests/runs.php
       - run: npm run env:cli -- eval-file tests/retention.php
       - run: npm run env:cli -- eval-file tests/admin-api.php
+      - run: npm run env:cli -- eval-file tests/runner-ingress.php
       - name: MultisiteのDB分離とネットワーク拒否
         run: |
-          npx wp-env run tests-cli bash -lc 'wp core multisite-convert --title=ODVR-test --quiet && wp plugin activate od-visual-regression --quiet && wp eval-file wp-content/plugins/od-visual-regression/tests/database-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/repositories.php && wp eval-file wp-content/plugins/od-visual-regression/tests/storage-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/runs-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/retention.php && wp eval-file wp-content/plugins/od-visual-regression/tests/uninstall-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/admin-api.php'
+          npx wp-env run tests-cli bash -lc 'wp core multisite-convert --title=ODVR-test --quiet && wp plugin activate od-visual-regression --quiet && wp eval-file wp-content/plugins/od-visual-regression/tests/database-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/repositories.php && wp eval-file wp-content/plugins/od-visual-regression/tests/storage-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/runs-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/retention.php && wp eval-file wp-content/plugins/od-visual-regression/tests/uninstall-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/admin-api.php && wp eval-file wp-content/plugins/od-visual-regression/tests/runner-ingress.php'
       - if: always()
         run: npm run env:stop

@@ -320,7 +320,7 @@ final class ODVR_Admin_Controller extends WP_REST_Controller {
 		$this->checked( $settings->claim_diagnostic() );
 		$saved  = $this->checked( $settings->saved() );
 		$checks = array(
-			'settings'   => true === ODVR_Config::dispatch_ready( $saved ) ? 'passed' : 'failed',
+			'settings'   => true === ODVR_Config::dispatch_ready( $saved ) && ODVR_Runner_Ingress::diagnose() ? 'passed' : 'failed',
 			'storage'    => 'failed',
 			'dispatcher' => 'failed',
 		);

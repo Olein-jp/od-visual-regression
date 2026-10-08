@@ -559,12 +559,50 @@ final class ODVR_Storage extends ODVR_Repository {
 				$path      = $directory . '/' . $slug . '-' . $result_digest . ( $diff ? '-diff' : '' ) . '.png';
 				$this->directory( $root . '/' . $directory );
 				if ( file_exists( $root . '/' . $path ) || is_link( $root . '/' . $path ) ) {
-					$this->fail( 'odvr_storage_conflict', 409 );
+					// DB rollback後の同一内容だけを再利用し、別内容は上書きしない.
+					$this->safe( $root . '/' . $path );
+					$existing = file_get_contents( $root . '/' . $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+					if ( is_wp_error( ODVR_PNG::validate( $existing, $ticket['info']['width'], $ticket['info']['height'], $ticket['info']['sha256'] ) ) ) {
+						$this->fail( 'odvr_storage_unavailable', 503 );
+					}
+					if ( ! unlink( $source ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+						$this->fail( 'odvr_storage_unavailable', 503 );
+					}
+					return $path;
 				}
 				if ( ! rename( $source, $root . '/' . $path ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- 同一filesystemのatomic renameが必要.
 					$this->fail( 'odvr_storage_unavailable', 503 );
 				}
 				return $path;
+			}
+		);
+	}
+
+	/**
+	 * この要求の未使用stagingだけを排他ロック下で回収する。
+	 *
+	 * @param array $ticket stageの内部結果.
+	 * @return true|WP_Error 結果.
+	 */
+	public function discard( $ticket ) {
+		return $this->read(
+			function () use ( $ticket ) {
+				$run     = $this->uuid( $ticket['run_uuid'] );
+				$request = $this->uuid( $ticket['request_uuid'] );
+				return $this->with_run_lock(
+					$run,
+					true,
+					function () use ( $run, $request ) {
+						$path = $this->root() . '/.staging/' . $run . '/' . $request . '.png';
+						if ( file_exists( $path ) || is_link( $path ) ) {
+							$this->safe( $path );
+							if ( ! unlink( $path ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+								$this->fail( 'odvr_storage_unavailable', 503 );
+							}
+						}
+						return true;
+					}
+				);
 			}
 		);
 	}

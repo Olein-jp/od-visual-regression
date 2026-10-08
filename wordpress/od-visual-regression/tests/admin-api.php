@@ -141,6 +141,15 @@ function odvr_test_admin_api() {
 				'cookies'  => array(),
 			);
 		};
+
+		if ( false !== strpos( $url, '/runner/runs/00000000-0000-4000-8000-000000000000/manifest' ) ) {
+			odvr_admin_check( 0 === $args['redirection'] && empty( $args['cookies'] ) && 'Bearer ' . str_repeat( 'A', 43 ) === $args['headers']['Authorization'], 'Basic除外診断は固定callback・無効Bearerだけを送る' );
+			$value                                     = $response( 401, wp_json_encode( array( 'code' => 'odvr_runner_unauthorized' ) ) );
+			$value['headers']['x-odvr-runner-gateway'] = '1';
+			$value['headers']['x-odvr-raw-multipart']  = 'available';
+			$value['headers']['x-odvr-bearer-header']  = 'present';
+			return $value;
+		}
 		if ( 0 === strpos( $url, 'https://staging.example.com/uploads/' ) ) {
 			if ( false !== strpos( $url, '/od-visual-regression/' ) ) {
 				return $response( 403, '' ); }
@@ -516,7 +525,17 @@ function odvr_test_admin_api() {
 			)->get_status(),
 			'別Executionを拒否する'
 		);
-		$credentials = odvr_admin_request( 0, 'GET', '/runner/runs/' . $uuid . '/credentials', null, array(), array( 'Authorization' => $bearer ) );
+		$credentials = odvr_admin_request(
+			0,
+			'GET',
+			'/runner/runs/' . $uuid . '/credentials',
+			null,
+			array(),
+			array(
+				'Authorization'       => $bearer,
+				'X-ODVR-Execution-ID' => 'fixture-execution',
+			)
+		);
 		odvr_admin_check( 200 === $credentials->get_status() && ODVR_HTTP_AUTH_PASSWORD === $credentials->get_data()->http_auth->password && 'private, no-store' === $credentials->get_headers()['Cache-Control'], '秘密は自Run runningのCredentialsだけで返す' );
 
 		$cors_priority = has_filter( 'rest_pre_serve_request', 'rest_send_cors_headers' );
@@ -730,6 +749,9 @@ function odvr_test_admin_api() {
 		$partial = odvr_admin_check( $manager->finish( $partial_uuid, $completed ), '成功・ERRORのあるRunを確定する' );
 		odvr_admin_check( 'partial' === $partial->status && ! is_wp_error( $auth->authorize( $partial_bearer, $partial_uuid, 'complete' ) ) && is_wp_error( $auth->authorize( $partial_bearer, $partial_uuid, 'manifest' ) ), 'partialもComplete再送だけに限定する' );
 		odvr_admin_check( 200 === odvr_admin_request( $admin, 'GET', '/snapshots/' . $image_snapshot . '/image' )->get_status(), '部分完了Runの成功画像も管理APIで配信する' );
+
+		require_once __DIR__ . '/runner-api.php';
+		odvr_test_runner_api( $admin, $suite_id, $target_id, $device_id );
 
 		$history   = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE suite_id = %d', ODVR_DB::table( 'runs' ), $suite_id ), ARRAY_A );
 		$persisted = wp_json_encode( $history ) . wp_json_encode( $wpdb->get_results( $wpdb->prepare( 'SELECT option_value FROM %i WHERE option_name LIKE %s', $wpdb->options, $wpdb->esc_like( 'odvr_' ) . '%' ), ARRAY_A ) );

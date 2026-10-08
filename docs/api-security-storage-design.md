@@ -371,3 +371,7 @@ Firefox、ログイン後撮影、通知、AI解析は対象外。設計採用�
 ## Issue #32 の実装
 
 管理 REST・非秘密 Settings・Run Token・Manifest/Credentials・WordPress の署名 Dispatch 送信と照合を実装した。[入口・設定・検証範囲](admin-api-and-dispatch.md)を参照する。Dispatcher の永続台帳・Job 起動と結果 Upload の HTTP 接続は後続で実装する。
+
+## Issue #33 の実装
+
+固定Baseline配信・生multipart Upload・Snapshot再送・Progress/CompleteのHTTP接続と、Basic除外・生本文取得の診断を実装した。[入口・環境要件・検証範囲](runner-results-api.md)を参照する。
