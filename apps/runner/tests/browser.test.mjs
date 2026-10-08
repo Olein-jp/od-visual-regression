@@ -31,9 +31,11 @@ test('Browserのリクエストガードが内部ホストへの遷移を拒否�
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext({ serviceWorkers: 'block' });
-    await installNetworkGuard(context, ['http://127.0.0.1:12345']);
+    const diagnostics = await installNetworkGuard(context, ['http://127.0.0.1:12345']);
     const page = await context.newPage();
     await assert.rejects(page.goto('http://127.0.0.1:12345', { timeout: 2000 }));
+    assert.equal(diagnostics.navigation_error_code, 'IP_BLOCKED');
+    assert.equal(diagnostics.blocked_resource_reasons.IP_BLOCKED, 1);
     await context.close();
   } finally { await browser.close(); }
 });
@@ -50,8 +52,20 @@ test('Runは対象の失敗後も継続し、履歴の上書きを拒否する',
     const report = await executeRun(manifest, output);
     assert.equal(report.total_snapshots, 2);
     assert.equal(report.error_snapshots, 2);
+    assert.ok(report.snapshots.every(snapshot => snapshot.error_code === 'IP_BLOCKED' && snapshot.http_status === null && snapshot.duration_ms >= 0));
     assert.equal(JSON.parse(await readFile(join(output, 'result.json'))).snapshots.length, 2);
     await assert.rejects(executeRun(manifest, output));
     await assert.rejects(executeRun(manifest, output, output), /別のディレクトリ/);
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('Chromiumの画像読込失敗をIMAGE_LOAD_FAILEDとして返す', async () => {
+  const browser = await chromium.launch();
+  try {
+    const context = await createContext(browser, DEFAULT_DEVICES[0]);
+    const page = await context.newPage();
+    await page.setContent('<img src="data:image/png;base64,Ym9ya2Vu">');
+    await assert.rejects(capturePage(page, DEFAULT_SETTINGS), error => error.code === 'IMAGE_LOAD_FAILED');
+    await context.close();
+  } finally { await browser.close(); }
 });

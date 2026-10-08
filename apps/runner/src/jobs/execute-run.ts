@@ -2,7 +2,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import { chromium } from 'playwright';
-import type { PrototypeManifest } from '@odvr/shared';
+import type { NetworkDiagnostics, PrototypeManifest, SnapshotErrorCode } from '@odvr/shared';
+import { SnapshotError, classifyError, safeUrl, urlFingerprint } from '../errors.js';
 import { createContext } from '../browser/context-factory.js';
 import { capturePage } from '../browser/screenshot.js';
 import { installNetworkGuard } from '../security/network-guard.js';
@@ -28,27 +29,39 @@ export async function executeRun(manifest: PrototypeManifest, output: string, ba
         if (!task) return;
         const { target, device } = task;
         const begin = Date.now();
-        const result: Record<string, unknown> = { target_id: target.id, device_id: device.id, url: target.url };
+        const result: Record<string, unknown> = { target_id: target.id, device_id: device.id, url: safeUrl(target.url), http_status: null, metadata: { url_fingerprint: urlFingerprint(target.url) } };
         let context;
+        let diagnostics: NetworkDiagnostics | undefined;
+        let stage: SnapshotErrorCode = 'SNAPSHOT_FAILED';
+        let crashed = false;
         try {
           await validateDestination(target.url, manifest.allowed_origins);
+          stage = 'BROWSER_ERROR';
           context = await createContext(browser, device, new URL(target.url).origin);
-          await installNetworkGuard(context, manifest.allowed_origins);
+          diagnostics = await installNetworkGuard(context, manifest.allowed_origins);
           const page = await context.newPage();
+          page.on('crash', () => { crashed = true; });
+          stage = 'NAVIGATION_TIMEOUT';
           const response = await page.goto(target.url, { waitUntil: 'domcontentloaded', timeout: manifest.settings.navigation_timeout_ms });
           result.http_status = response?.status() ?? null;
-          if (!response || response.status() >= 400) throw new Error('HTTP応答に失敗しました');
+          if (!response || response.status() >= 400) throw new SnapshotError('HTTP_ERROR');
+          stage = 'SCREENSHOT_FAILED';
           const image = await capturePage(page, manifest.settings);
           const decoded = decodeImage(image);
+          if (crashed) throw new SnapshotError('PAGE_CRASH');
+          if (diagnostics.blocked_resource_count) throw new SnapshotError('RESOURCE_BLOCKED');
+          stage = 'FILE_SAVE_FAILED';
           const directory = join(output, `target-${target.id}`);
           await mkdir(directory, { recursive: true });
           await writeFile(join(directory, `${device.slug}.png`), image);
           Object.assign(result, { status: 'CAPTURED', width: decoded.width, height: decoded.height, image_path: `target-${target.id}/${device.slug}.png` });
+          stage = 'SNAPSHOT_FAILED';
           if (baseline) {
             const reference = await inspectBaseline(referenceRun!, baseline, manifest, target, device, versions);
             result.baseline_compatibility = reference.compatibility;
             if (reference.image) {
               const { diff_image, ...comparison } = compareImages(reference.image, image, manifest.settings);
+              stage = 'FILE_SAVE_FAILED';
               await writeFile(join(directory, `${device.slug}-diff.png`), diff_image);
               Object.assign(result, comparison, { diff_path: `target-${target.id}/${device.slug}-diff.png` });
             } else if (['SNAPSHOT_MISSING', 'IMAGE_MISSING'].includes(reference.compatibility.state)) {
@@ -58,10 +71,20 @@ export async function executeRun(manifest: PrototypeManifest, output: string, ba
             }
           }
         } catch (error) {
-          Object.assign(result, { status: 'ERROR', error_code: 'SNAPSHOT_FAILED', error_message: error instanceof Error ? error.message : '不明なエラー' });
+          const failure = crashed ? new SnapshotError('PAGE_CRASH') : diagnostics?.navigation_error_code ? new SnapshotError(diagnostics.navigation_error_code) : classifyError(error, stage);
+          Object.assign(result, { status: 'ERROR', error_code: failure.code, error_message: failure.message });
         } finally {
           try { await context?.close(); } catch {
-            Object.assign(result, { status: 'ERROR', error_code: 'CONTEXT_CLOSE_FAILED', error_message: 'Browser Contextの終了に失敗しました' });
+            if (result.status !== 'ERROR') Object.assign(result, { status: 'ERROR', error_code: 'CONTEXT_CLOSE_FAILED', error_message: new SnapshotError('CONTEXT_CLOSE_FAILED').message });
+            result.metadata = { ...result.metadata as object, cleanup_error_code: 'CONTEXT_CLOSE_FAILED' };
+          }
+          if (diagnostics) {
+            result.metadata = { ...result.metadata as object, network: diagnostics };
+            result.http_status ??= diagnostics.navigation_http_status ?? null;
+            if (result.status !== 'ERROR' && diagnostics.blocked_resource_count) {
+              const failure = new SnapshotError('RESOURCE_BLOCKED');
+              Object.assign(result, { status: 'ERROR', error_code: failure.code, error_message: failure.message });
+            }
           }
           result.duration_ms = Date.now() - begin;
           results.push(result);
@@ -70,7 +93,7 @@ export async function executeRun(manifest: PrototypeManifest, output: string, ba
     }));
   } finally { await browser.close(); }
   results.sort((a, b) => Number(a.target_id) - Number(b.target_id) || Number(a.device_id) - Number(b.device_id));
-  const report = { ...versions, configuration: manifest, started_at: started, completed_at: new Date().toISOString(), total_snapshots: results.length, error_snapshots: results.filter(result => result.status === 'ERROR').length, snapshots: results };
+  const report = { ...versions, configuration: { ...manifest, targets: manifest.targets.map(target => ({ ...target, url: safeUrl(target.url) })), allowed_origins: manifest.allowed_origins }, started_at: started, completed_at: new Date().toISOString(), total_snapshots: results.length, error_snapshots: results.filter(result => result.status === 'ERROR').length, snapshots: results };
   await writeFile(join(output, 'result.json'), JSON.stringify(report, null, 2) + '\n');
   return report;
 }

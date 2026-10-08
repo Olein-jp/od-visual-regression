@@ -40,3 +40,15 @@ export function differenceStatus(ratio: number, settings: Pick<CaptureSettings, 
   if (ratio >= settings.changed_threshold) return 'CHANGED';
   return ratio > settings.review_threshold ? 'REVIEW' : 'UNCHANGED';
 }
+
+export type SnapshotErrorCode =
+  | 'HTTP_ERROR' | 'NAVIGATION_TIMEOUT' | 'DNS_ERROR' | 'TLS_ERROR' | 'PAGE_CRASH'
+  | 'IMAGE_LOAD_FAILED' | 'SCREENSHOT_FAILED' | 'ORIGIN_BLOCKED' | 'IP_BLOCKED'
+  | 'REDIRECT_BLOCKED' | 'URL_BLOCKED' | 'NETWORK_ERROR' | 'RESOURCE_BLOCKED'
+  | 'FILE_SAVE_FAILED' | 'BROWSER_ERROR' | 'CONTEXT_CLOSE_FAILED' | 'SNAPSHOT_FAILED';
+export interface NetworkDiagnostics {
+  blocked_resource_count: number;
+  blocked_resource_reasons: Partial<Record<SnapshotErrorCode, number>>;
+  navigation_error_code?: SnapshotErrorCode;
+  navigation_http_status?: number;
+}
