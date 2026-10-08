@@ -28,6 +28,10 @@ Issue #4の設計案は [api-security-storage-design.md](api-security-storage-de
 
 Issue #10のPhase 5設計案は [dispatcher-cloud-run-design.md](dispatcher-cloud-run-design.md) にまとめています。HMAC受付・永続台帳による重複防止、起動不明時のExecution照合、期限付きRun Secret、Service/JobのIAMとImage、既存WordPress環境へのローカル接続、path別CI・明示デプロイ・rollback、5項目の実装順序を定義しています。設計採用後に実装Issueへ分割する段階であり、Dispatcher・Docker・クラウドリソースは未実装です。
 
+## Tests・Runs・Devices・Settingsの管理画面設計
+
+Issue #11のPhase 6設計案は [admin-ui-design.md](admin-ui-design.md) にまとめています。4メニュー、Suite編集とRun開始、管理APIとの対応、Environment/進捗/Baseline/Retention、4モードのViewerと認証Blob、秘密設定・権限・翻訳・キーボード操作・ポーリング・独立JS build、5項目の実装順序を定義しています。接続診断と管理応答の表示フィールドは追加契約として明記しています。設計採用後に実装Issueへ分割する段階であり、製品コード・Schema・クラウドリソースは変更していません。
+
 ## 今回の検証
 
 2026年10月8日、Node.js 20.19.2・npm 10.8.2・Playwright 1.64.0の環境で、ビルド・Schema検証・12件のテスト・PHP構文検査・WPCSが成功しました。ChromiumのテストはmacOSの実行制限外で実施しました。公開サンプルページの撮影とBaseline比較も成功し、差分率0・UNCHANGED、PNGと差分PNGの保存を確認しています。
