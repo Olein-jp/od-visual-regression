@@ -29,7 +29,44 @@ npm run runner -- docs/prototype-manifest.example.json artifacts/before
 npm run runner -- docs/prototype-manifest.example.json artifacts/after artifacts/before
 ```
 
-出力先は存在しないディレクトリを指定します。同じRunを上書きしません。変更前後では同じManifest、Runner、Playwright、Chromiumを使用してください。結果のconfigurationと各バージョンを照合できます。プロトタイプはBaseline設定の互換性を自動判定しません。
+出力先は存在しないディレクトリを指定します。同じRunを上書きしません。Baselineを指定するCLI引数は従来どおりです。比較前にBaselineの `result.json` を検査し、現在の撮影条件と照合します。
+
+### Baselineの互換性
+
+対象ID・Device IDごとに、次の条件が一致する場合だけ比較します。
+
+- 対象URL（文字列の完全一致）
+- Deviceのviewport幅・高さ、User Agent、device scale factor、mobile・touch設定
+- マスクセレクター、lazy load、navigation・image timeout
+- 許可Origin（リソースの読み込み条件に影響するため）
+- Runner・Playwright・Chromiumの各バージョン（完全一致）
+
+マスクセレクターと許可Originは順序を無視し、マスクセレクターの重複も無視します。対象のラベル、Deviceの表示名・slug、並列数は撮影条件の比較から除外します。Baseline画像はBaseline側のslugから特定します。 `pixel_threshold`・`review_threshold`・`changed_threshold` は撮影条件ではないため、変更しても比較でき、現在の設定で差分を再判定します。撮影画像の幅・高さが変わっただけの場合も比較でき、従来の `dimension_changed` 処理を維持します。Deviceのviewport設定自体を変更した場合は互換とみなしません。
+
+各Snapshotの `baseline_compatibility.state` と `reasons` に検査結果と該当項目を記録します。
+
+| state | 意味・処理 |
+| --- | --- |
+| COMPATIBLE | 同条件。画像比較を実行 |
+| INCOMPATIBLE | 条件・バージョンの相違。比較を拒否しERROR |
+| METADATA_MISSING | 設定・バージョン・Snapshot一覧の情報不足。比較を拒否しERROR |
+| RESULT_MISSING | result.jsonの欠損。比較を拒否しERROR |
+| RESULT_INVALID | JSONの構文・構造不正、Snapshotの重複やURL・画像パス・記録寸法の矛盾。比較を拒否しERROR |
+| SNAPSHOT_MISSING | 対応するSnapshot記録の欠損。NO_BASELINE |
+| IMAGE_MISSING | 対応するPNGの欠損。NO_BASELINE |
+| IMAGE_INVALID | PNGの破損・画像寸法上限超過。比較を拒否しERROR |
+| READ_FAILED | JSON・画像の読み取り失敗（欠損以外）。比較を拒否しERROR |
+
+ERROR時の `error_code` は `BASELINE_` とstateの組み合わせです。現在の画像は保存し、他のSnapshotの撮影も続行します。ERRORが含まれるRunは終了コード1になります。
+
+旧Baselineも、保存済みのconfiguration・各バージョン・Snapshot記録が揃っていて条件が一致すれば利用できます。画像だけのBaselineや情報不足の結果JSONを自動的に互換とみなすことはありません。情報不足の場合は現在の条件でBaselineを撮影し直してください。記録上ERRORのSnapshotは比較対象にしません。
+
+互換性と既存の画像比較の検証は次で実行します。
+
+```sh
+npm run build
+node --test apps/runner/tests/baseline.test.mjs apps/runner/tests/compare.test.mjs
+```
 
 ```text
 artifacts/after/

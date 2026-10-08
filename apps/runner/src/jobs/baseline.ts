@@ -1,0 +1,87 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import type { DeviceProfile, PrototypeManifest } from '@odvr/shared';
+import { parseManifest } from '../config.js';
+import { decodeImage } from '../visual/normalize-image.js';
+
+export interface CaptureVersions {
+  runner_version: string;
+  playwright_version: string;
+  chromium_version: string;
+}
+type BaselineState = 'COMPATIBLE' | 'INCOMPATIBLE' | 'METADATA_MISSING' | 'RESULT_MISSING' | 'RESULT_INVALID' | 'SNAPSHOT_MISSING' | 'IMAGE_MISSING' | 'IMAGE_INVALID' | 'READ_FAILED';
+export interface BaselineCompatibility {
+  state: BaselineState;
+  reasons: string[];
+}
+type Baseline = { compatibility: BaselineCompatibility; configuration?: PrototypeManifest; versions?: CaptureVersions; snapshots?: Record<string, unknown>[] };
+const outcome = (state: BaselineState, ...reasons: string[]): BaselineCompatibility => ({ state, reasons });
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+export async function loadBaseline(directory: string): Promise<Baseline> {
+  let raw: string;
+  try { raw = await readFile(join(directory, 'result.json'), 'utf8'); }
+  catch (error) {
+    return { compatibility: outcome((error as NodeJS.ErrnoException).code === 'ENOENT' ? 'RESULT_MISSING' : 'READ_FAILED', 'result.json') };
+  }
+  let report: unknown;
+  try { report = JSON.parse(raw); }
+  catch { return { compatibility: outcome('RESULT_INVALID', 'result.json') }; }
+  if (!isRecord(report)) return { compatibility: outcome('RESULT_INVALID', 'result.json') };
+  const missing = ['configuration', 'runner_version', 'playwright_version', 'chromium_version', 'snapshots'].filter(key => report[key] === undefined);
+  if (missing.length) return { compatibility: outcome('METADATA_MISSING', ...missing) };
+  let configuration: PrototypeManifest;
+  try { configuration = parseManifest(report.configuration); }
+  catch { return { compatibility: outcome('RESULT_INVALID', 'configuration') }; }
+  for (const key of ['runner_version', 'playwright_version', 'chromium_version']) {
+    if (typeof report[key] !== 'string' || !report[key].trim()) return { compatibility: outcome('RESULT_INVALID', key) };
+  }
+  if (!Array.isArray(report.snapshots) || !report.snapshots.every(isRecord)) return { compatibility: outcome('RESULT_INVALID', 'snapshots') };
+  if (report.snapshots.some(snapshot => !Number.isInteger(snapshot.target_id) || Number(snapshot.target_id) < 1 || !Number.isInteger(snapshot.device_id) || Number(snapshot.device_id) < 1 || typeof snapshot.url !== 'string' || typeof snapshot.status !== 'string')) {
+    return { compatibility: outcome('RESULT_INVALID', 'snapshots') };
+  }
+  return { compatibility: outcome('COMPATIBLE'), configuration, versions: report as unknown as CaptureVersions, snapshots: report.snapshots };
+}
+
+// 順序と重複はマスク対象・許可Originの意味を変えない。
+const setValue = (values: string[]) => JSON.stringify([...new Set(values)].sort());
+export async function inspectBaseline(baseline: Baseline, directory: string, manifest: PrototypeManifest, target: PrototypeManifest['targets'][number], device: DeviceProfile, versions: CaptureVersions): Promise<{ compatibility: BaselineCompatibility; image?: Buffer }> {
+  if (baseline.compatibility.state !== 'COMPATIBLE') return { compatibility: baseline.compatibility };
+  const configuration = baseline.configuration!;
+  const oldTarget = configuration.targets.find(item => item.id === target.id);
+  const oldDevice = configuration.devices.find(item => item.id === device.id);
+  const reasons: string[] = [];
+  if (!oldTarget) reasons.push('target_id');
+  else if (oldTarget.url !== target.url) reasons.push('target.url');
+  if (!oldDevice) reasons.push('device_id');
+  else {
+    for (const key of ['viewport_width', 'viewport_height', 'user_agent', 'device_scale_factor', 'is_mobile', 'has_touch'] as const) {
+      if (oldDevice[key] !== device[key]) reasons.push(`device.${key}`);
+    }
+  }
+  for (const key of ['navigation_timeout_ms', 'image_timeout_ms', 'lazy_load'] as const) {
+    if (configuration.settings[key] !== manifest.settings[key]) reasons.push(`settings.${key}`);
+  }
+  if (setValue(configuration.settings.ignore_selectors) !== setValue(manifest.settings.ignore_selectors)) reasons.push('settings.ignore_selectors');
+  if (setValue(configuration.allowed_origins) !== setValue(manifest.allowed_origins)) reasons.push('allowed_origins');
+  for (const key of ['runner_version', 'playwright_version', 'chromium_version'] as const) {
+    if (baseline.versions![key] !== versions[key]) reasons.push(key);
+  }
+  if (reasons.length) return { compatibility: outcome('INCOMPATIBLE', ...reasons) };
+  const matches = baseline.snapshots!.filter(item => item.target_id === target.id && item.device_id === device.id);
+  if (!matches.length) return { compatibility: outcome('SNAPSHOT_MISSING', 'snapshots') };
+  const snapshot = matches[0];
+  const path = `target-${target.id}/${oldDevice!.slug}.png`;
+  if (matches.length !== 1 || snapshot.url !== target.url || !['CAPTURED', 'UNCHANGED', 'REVIEW', 'CHANGED', 'NO_BASELINE'].includes(String(snapshot.status)) || snapshot.image_path !== path || !Number.isInteger(snapshot.width) || !Number.isInteger(snapshot.height)) {
+    return { compatibility: outcome('RESULT_INVALID', 'snapshot') };
+  }
+  let image: Buffer;
+  // JSON内の任意パスではなく、検証済みID・slugから画像を特定する。
+  try { image = await readFile(join(directory, path)); }
+  catch (error) { return { compatibility: outcome((error as NodeJS.ErrnoException).code === 'ENOENT' ? 'IMAGE_MISSING' : 'READ_FAILED', path) }; }
+  try {
+    const decoded = decodeImage(image);
+    if (decoded.width !== snapshot.width || decoded.height !== snapshot.height) return { compatibility: outcome('RESULT_INVALID', 'snapshot.dimensions') };
+  } catch { return { compatibility: outcome('IMAGE_INVALID', path) }; }
+  return { compatibility: outcome('COMPATIBLE'), image };
+}
