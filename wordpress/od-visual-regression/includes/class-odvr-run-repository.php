@@ -67,6 +67,66 @@ class ODVR_Run_Repository extends ODVR_Repository {
 	}
 
 	/**
+	 * 管理APIのUUIDをIDへ解決する。内部パスやHashは返さない。
+	 *
+	 * @param string $uuid UUID.
+	 * @return int|WP_Error ID.
+	 */
+	public function resolve_uuid( $uuid ) {
+		return $this->read(
+			function () use ( $uuid ) {
+				return $this->integer( $this->uuid_row( $uuid )['id'], true );
+			}
+		);
+	}
+	/**
+	 * 固定Snapshot結果の表示契約をページ単位で返す。
+	 *
+	 * @param string $uuid UUID.
+	 * @param int    $page ページ.
+	 * @param int    $per_page 件数.
+	 * @return array|WP_Error 表示結果.
+	 */
+	public function list_snapshots( $uuid, $page = 1, $per_page = 20 ) {
+		return $this->read(
+			function () use ( $uuid, $page, $per_page ) {
+				$row = $this->uuid_row( $uuid );
+				$this->checked( ( new ODVR_Run_Manager() )->expire( $this->integer( $row['id'], true ) ) );
+				$row    = $this->uuid_row( $uuid );
+				$rows   = $this->snapshots( $row );
+				$offset = $this->offset( $page, $per_page );
+				$items  = array();
+				foreach ( array_slice( $rows, $offset, $per_page ) as $snapshot ) {
+						$metadata = json_decode( $snapshot['metadata'] );
+						$result   = null === $metadata->result ? array_fill_keys( array( 'width', 'height', 'baseline_width', 'baseline_height', 'diff_pixels', 'total_pixels', 'diff_ratio', 'http_status', 'error_code', 'error_message', 'no_baseline_reason' ), null ) : get_object_vars( $metadata->result );
+						unset( $result['schema_version'] );
+						$result['target_id']          = $metadata->target->id;
+						$result['device_id']          = $metadata->device->id;
+						$result['status']             = $snapshot['status'];
+						$result['dimension_changed']  = null === $metadata->result ? false : $metadata->result->dimension_changed;
+						$result['duration_ms']        = null === $metadata->result ? 0 : $metadata->result->duration_ms;
+						$result['snapshot_id']        = $this->integer( $snapshot['id'], true );
+						$result['has_current_image']  = 'deleting' !== $row['status'] && null !== $snapshot['image_path'];
+						$result['has_diff_image']     = 'deleting' !== $row['status'] && null !== $snapshot['diff_path'];
+						$result['has_baseline_image'] = 'deleting' !== $row['status'] && null !== $snapshot['baseline_snapshot_id'];
+						$items[]                      = (object) $result;
+				}
+				$this->validate(
+					'snapshot-list-response',
+					(object) array(
+						'schema_version' => 1,
+						'items'          => $items,
+					)
+				);
+				return array(
+					'items' => $items,
+					'total' => count( $rows ),
+				);
+			}
+		);
+	}
+
+	/**
 	 * UUIDを完全一致で解決する。
 	 *
 	 * @param string $uuid UUID.

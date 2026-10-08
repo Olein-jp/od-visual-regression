@@ -172,3 +172,7 @@ Dispatcherは新revisionへtrafficを切り替える前にhealth、登録設定�
 本設計で未実測の事項は、Run Secretの作成数/quota/費用、Secret IAM反映時間、Firestore運用費用、Cloud Runの待機と可視性遅延、Chromiumの2 GiBでの安定性、Mac上amd64実行性能、Local/wp-envの具体的接続IP、custom roleのresource scopeである。手順3〜4で測定・確定し、基準を満たせない場合は公開しない。ブラウザ侵害への完全な隔離、永久的なUUID拒否、外部APIのexactly-once起動は保証しない。起動不明で未撮影になるRunは安全側の仕様として管理画面へ示す。
 
 今回の検証範囲は指定仕様・先行設計・既存入口/CIとの照合、2026年10月8日に確認した上記公式API資料、相対リンク/差分/受入れ条件の検査。製品全テスト、Docker起動、クラウド作成/実測は行わない。Firefox、ログイン後撮影、通知、AI解析、依存更新は対象外。
+
+## Issue #32 の実装
+
+管理 REST・非秘密 Settings・Run Token・Manifest/Credentials・WordPress の署名 Dispatch 送信と照合を実装した。[入口・設定・検証範囲](admin-api-and-dispatch.md)を参照する。Dispatcher の永続台帳・Job 起動と結果 Upload の HTTP 接続は後続で実装する。

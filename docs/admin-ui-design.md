@@ -208,3 +208,7 @@ Dispatcher側の**追加提案**POST `/v1/connection-test`はsite_id/schema_vers
 今回は指定仕様、Pluginの直接参照先、shared/Device/Prototype Schema、現行比較処理、先行DB/API設計、content API契約を照合した。Markdownの相対リンク、入力範囲/既定値/判定境界、APIのmethod/path、docs限定の変更と空白を確認する。設計のみのため製品全テスト/buildは行わず、画面・DB・認証・クラウド動作を実機検証済みとはしない。
 
 Firefox、WordPressログイン後撮影、通知、AI解析はPhase 2候補として対象外。無関係な改修・依存更新・全体整形は行わない。
+
+## Issue #32 の実装
+
+管理 REST・非秘密 Settings・Run Token・Manifest/Credentials・WordPress の署名 Dispatch 送信と照合を実装した。[入口・設定・検証範囲](admin-api-and-dispatch.md)を参照する。Dispatcher の永続台帳・Job 起動と結果 Upload の HTTP 接続は後続で実装する。

@@ -108,7 +108,7 @@ final class ODVR_Image_Controller extends WP_REST_Controller {
 		if ( $wpdb->last_error ) {
 			return new WP_Error( 'odvr_storage_unavailable', __( '画像保存先を利用できません。', 'od-visual-regression' ), array( 'status' => 503 ) );
 		}
-		if ( ! $row || ! in_array( $row['status'], array( 'CAPTURED', 'UNCHANGED', 'REVIEW', 'CHANGED', 'NO_BASELINE' ), true ) || ! in_array( $row['run_status'], array( 'running', 'complete', 'failed' ), true ) ) {
+		if ( ! $row || ! in_array( $row['status'], array( 'CAPTURED', 'UNCHANGED', 'REVIEW', 'CHANGED', 'NO_BASELINE' ), true ) || ! in_array( $row['run_status'], array( 'running', 'complete', 'partial', 'failed' ), true ) ) {
 			return $error;
 		}
 		if ( 'baseline' === $kind ) {

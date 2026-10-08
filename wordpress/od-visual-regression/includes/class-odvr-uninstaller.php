@@ -97,7 +97,7 @@ final class ODVR_Uninstaller extends ODVR_Repository {
 				foreach ( array( 'snapshots', 'runs', 'targets', 'devices', 'suites' ) as $suffix ) {
 					$this->written( $wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', ODVR_DB::table( $suffix ) ) ) );
 				}
-				$options = array( 'odvr_db_version', 'odvr_db_error', 'odvr_db_upgrade_lock', 'odvr_storage_ready', 'odvr_storage_cleanup_cursor', 'odvr_storage_staging_cursor', 'odvr_run_expiry_cursor', 'odvr_retention_cursor', 'odvr_deletion_cursor', 'odvr_suspended', 'odvr_deleting_site', 'odvr_uninstall_error', 'odvr_settings', 'odvr_delete_data_on_uninstall' );
+				$options = array( 'odvr_db_version', 'odvr_db_error', 'odvr_db_upgrade_lock', 'odvr_storage_ready', 'odvr_storage_cleanup_cursor', 'odvr_storage_staging_cursor', 'odvr_run_expiry_cursor', 'odvr_retention_cursor', 'odvr_deletion_cursor', 'odvr_suspended', 'odvr_deleting_site', 'odvr_uninstall_error', 'odvr_settings', 'odvr_connection_test_lock', 'odvr_delete_data_on_uninstall' );
 				foreach ( $options as $option ) {
 					delete_option( $option );
 				}
