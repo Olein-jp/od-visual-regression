@@ -50,11 +50,14 @@ final class ODVR_Plugin {
 		// phpcs:ignore WordPress.WP.CronInterval.ChangeDetected -- 間隔はRun Managerで60秒と定義する.
 		add_filter( 'cron_schedules', array( 'ODVR_Run_Manager', 'cron_schedules' ) );
 		add_action( 'odvr_run_expiry', array( 'ODVR_Run_Manager', 'expiry_cron' ) );
-		if ( ! wp_next_scheduled( 'odvr_run_expiry' ) ) {
+		if ( true === ODVR_DB::writable() && ! wp_next_scheduled( 'odvr_run_expiry' ) ) {
 			wp_schedule_event( time() + MINUTE_IN_SECONDS, 'odvr_minute', 'odvr_run_expiry' );
 		}
+		add_action( 'odvr_retention', array( 'ODVR_Retention', 'cron' ) );
+		if ( true === ODVR_DB::writable() && ! wp_next_scheduled( 'odvr_retention' ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'hourly', 'odvr_retention' ); }
 		add_action( 'odvr_storage_cleanup', array( 'ODVR_Storage', 'cleanup_cron' ) );
-		if ( ! wp_next_scheduled( 'odvr_storage_cleanup' ) ) {
+		if ( true === ODVR_DB::writable() && ! wp_next_scheduled( 'odvr_storage_cleanup' ) ) {
 			wp_schedule_event( time() + HOUR_IN_SECONDS, 'hourly', 'odvr_storage_cleanup' );
 		}
 		add_action( 'init', array( $this, 'load_textdomain' ) );

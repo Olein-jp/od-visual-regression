@@ -23,10 +23,14 @@ final class ODVR_Activator {
 		if ( $network_wide ) {
 			wp_die( esc_html__( 'OD Visual Regressionはサイト単位で有効化してください。ネットワーク一括有効化には対応していません。', 'od-visual-regression' ) );
 		}
+		if ( get_option( 'odvr_deleting_site', false ) ) {
+			wp_die( esc_html__( '未完了の明示削除を再試行してください。', 'od-visual-regression' ) ); }
 		$result = ODVR_DB::upgrade( true );
 		if ( is_wp_error( $result ) ) {
 			wp_die( esc_html( $result->get_error_message() ) );
 		}
+		delete_option( 'odvr_suspended' );
+
 		ODVR_Capabilities::grant();
 	}
 }

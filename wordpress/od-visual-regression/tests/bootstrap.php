@@ -127,12 +127,16 @@ function odvr_test_bootstrap() {
 
 		deactivate_plugins( $plugin );
 		odvr_test_assert( ! is_plugin_active( $plugin ), '通常の無効化フックが実行される' );
+		odvr_test_assert( get_option( 'odvr_suspended' ) && is_wp_error( ODVR_DB::writable() ), '無効化後の書込を拒否する' );
+		foreach ( array( 'odvr_retention', 'odvr_run_expiry', 'odvr_storage_cleanup' ) as $hook ) {
+			odvr_test_assert( ! wp_next_scheduled( $hook ), '無効化で' . $hook . 'を停止する' );
+		}
 		odvr_test_assert( get_option( $option_name ) === $marker, '無効化後も履歴相当の保存値が残る' );
 		odvr_test_assert( file_exists( $image_path ) && $wp_filesystem->get_contents( $image_path ) === $marker, '無効化後も画像保存先のファイルが残る' );
 		odvr_test_assert( get_role( 'administrator' )->has_cap( 'manage_odvr' ), '無効化後も管理権限を保持する' );
 
 		$activated = activate_plugin( $plugin );
-		odvr_test_assert( ! is_wp_error( $activated ) && is_plugin_active( $plugin ), '再有効化できる' );
+		odvr_test_assert( ! is_wp_error( $activated ) && is_plugin_active( $plugin ) && true === ODVR_DB::writable(), '停止状態を解除して再有効化できる' );
 		odvr_test_assert( get_role( 'administrator' )->has_cap( 'manage_odvr' ), '再有効化後も管理権限が有効である' );
 	} finally {
 		remove_filter( 'locale', 'odvr_test_japanese_locale' );
