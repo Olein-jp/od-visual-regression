@@ -2,6 +2,8 @@
 
 対象は [Issue #4](https://github.com/Olein-jp/od-visual-regression/issues/4)。根拠は [仕様書v1.1](specification-v1.1.md) §10・§35・§37〜46・§68・§70、およびマージ済みの [DB・Run・Baseline・Retention設計](data-lifecycle-design.md)。本書は採用前の設計案であり、PRへの合意後に実装Issueへ分割する。今回は製品コード、Schema、クラウドリソースを変更しない。
 
+実装済みの共通契約（#26）と管理表示・診断フィールドの確定内容は [api-contracts.md](api-contracts.md) を参照する。以下の設計当時の記述と、製品APIそのものの実装状況は区別する。
+
 ## 現状と推奨方針
 
 - `prototype-manifest.schema.json` と `PrototypeManifest` はローカル実行用。Run ID、参照Snapshot、認証、通信Versionを持たず、製品のRun Manifestとは別契約である。

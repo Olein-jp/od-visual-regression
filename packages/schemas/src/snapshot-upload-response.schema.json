@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://odvr.example/schemas/snapshot-upload-response.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "snapshot_id",
+    "status",
+    "replayed"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "snapshot_id": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "status": {
+      "enum": [
+        "CAPTURED",
+        "NO_BASELINE",
+        "UNCHANGED",
+        "REVIEW",
+        "CHANGED",
+        "ERROR"
+      ]
+    },
+    "replayed": {
+      "type": "boolean"
+    }
+  }
+}

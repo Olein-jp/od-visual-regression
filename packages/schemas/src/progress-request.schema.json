@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://odvr.example/schemas/progress-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "runner_execution_id",
+    "versions"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "runner_execution_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runner",
+        "playwright",
+        "chromium"
+      ],
+      "properties": {
+        "runner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "playwright": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "chromium": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    }
+  }
+}

@@ -18,7 +18,9 @@
     "build": "npm run build --workspace=@odvr/shared && npm run build --workspace=@odvr/runner",
     "test": "npm run build && node --test apps/runner/tests/*.test.mjs",
     "runner": "node apps/runner/dist/index.js",
-    "schemas:validate": "node scripts/validate-schemas.mjs"
+    "schemas:validate": "node scripts/validate-schemas.mjs && node scripts/generate-contract-types.mjs --check",
+    "preenv:start": "node scripts/sync-schemas.mjs",
+    "test:contracts": "node --test packages/schemas/tests/*.test.mjs"
   },
   "devDependencies": {
     "@wordpress/env": "^11.17.0"

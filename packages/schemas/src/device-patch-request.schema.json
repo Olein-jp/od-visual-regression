@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://odvr.example/schemas/device-patch-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,49}$(?![\\s\\S])"
+    },
+    "viewport_width": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4096
+    },
+    "viewport_height": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4096
+    },
+    "device_scale_factor": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 4
+    },
+    "is_mobile": {
+      "type": "boolean"
+    },
+    "has_touch": {
+      "type": "boolean"
+    },
+    "user_agent": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "sort_order": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  },
+  "minProperties": 2
+}

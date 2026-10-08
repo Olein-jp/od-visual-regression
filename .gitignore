@@ -9,3 +9,6 @@ node_modules/
 **/dist/
 /artifacts/
 __pycache__/
+
+/wordpress/od-visual-regression/schemas/
+/wordpress/od-visual-regression/tests/contract-fixtures.generated.json

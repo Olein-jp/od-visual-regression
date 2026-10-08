@@ -75,6 +75,13 @@ def build(tag):
         if not scripts or any(path.with_suffix(".asset.php") not in files or path.stat().st_size == 0 or path.with_suffix(".asset.php").stat().st_size == 0 for path in scripts):
             raise ValueError("管理画面の build が不足しています。admin/build の JS と対応する .asset.php を生成してください。")
 
+    schema_dir = ROOT / "packages" / "schemas" / "src"
+    if schema_dir.is_symlink():
+        raise ValueError("Schemaディレクトリにシンボリックリンクは使用できません。")
+    schema_files = sorted(schema_dir.glob("*.schema.json"))
+    if not schema_files or any(path.is_symlink() for path in schema_files):
+        raise ValueError("配布Schemaが不足しています、またはシンボリックリンクです。")
+
     output_dir = ROOT / "build"
     if output_dir.is_symlink():
         raise ValueError("出力ディレクトリにシンボリックリンクは使用できません。")
@@ -87,6 +94,8 @@ def build(tag):
         with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as archive:
             for path in sorted(files):
                 archive.write(path, str(Path(SLUG) / path.relative_to(plugin)))
+            for path in schema_files:
+                archive.write(path, str(Path(SLUG) / "schemas" / path.name))
         with zipfile.ZipFile(temporary) as archive:
             if archive.testzip() is not None:
                 raise ValueError("生成した ZIP の検査に失敗しました。")

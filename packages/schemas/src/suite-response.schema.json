@@ -1,0 +1,232 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://odvr.example/schemas/suite-response.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "item"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "uuid",
+        "name",
+        "status",
+        "settings",
+        "device_ids",
+        "allowed_origins",
+        "retention",
+        "baseline_run_id",
+        "target_count",
+        "device_count",
+        "latest_run"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$(?![\\s\\S])"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "status": {
+          "enum": [
+            "active",
+            "archived"
+          ]
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "navigation_timeout_ms",
+            "image_timeout_ms",
+            "lazy_load",
+            "concurrency",
+            "pixel_threshold",
+            "review_threshold",
+            "changed_threshold",
+            "ignore_selectors",
+            "settings_version"
+          ],
+          "properties": {
+            "navigation_timeout_ms": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 120000
+            },
+            "image_timeout_ms": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 60000
+            },
+            "lazy_load": {
+              "type": "boolean"
+            },
+            "concurrency": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "pixel_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "review_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "changed_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "ignore_selectors": {
+              "type": "array",
+              "maxItems": 50,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "settings_version": {
+              "const": 1
+            }
+          }
+        },
+        "device_ids": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true
+        },
+        "allowed_origins": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          },
+          "minItems": 1,
+          "maxItems": 30,
+          "uniqueItems": true
+        },
+        "retention": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "count"
+          ],
+          "properties": {
+            "mode": {
+              "enum": [
+                "all",
+                "last"
+              ]
+            },
+            "count": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "baseline_run_id": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "device_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "latest_run": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "run_uuid",
+                "status",
+                "created_at"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "run_uuid": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$(?![\\s\\S])"
+                },
+                "status": {
+                  "enum": [
+                    "queued",
+                    "running",
+                    "complete",
+                    "partial",
+                    "failed",
+                    "deleting"
+                  ]
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$(?![\\s\\S])"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
