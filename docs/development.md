@@ -99,6 +99,8 @@ HTTP Basic認証にはODVR_HTTP_AUTH_USERとODVR_HTTP_AUTH_PASSWORDを実行環�
 
 ## WordPress
 
+WordPress→Dispatcher/Runner→比較結果閲覧の結合手順は前提機能が未実装のため未提供です。Issue #13の不足と着手条件は [MVP結合検証の記録](mvp-integration-validation.md) を参照してください。
+
 ```sh
 npm run env:start
 npm run env:cli -- plugin list
