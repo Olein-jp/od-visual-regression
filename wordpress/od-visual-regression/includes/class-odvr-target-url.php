@@ -39,6 +39,29 @@ final class ODVR_Target_URL {
 	}
 
 	/**
+	 * 公開投稿/CPTのURLを保存時に解決する。
+	 *
+	 * @param string   $url Custom URLまたは候補URL.
+	 * @param int|null $object_id 投稿IDまたはnull.
+	 * @param string   $post_type 投稿タイプまたは空文字.
+	 * @return string|WP_Error URLまたはエラー.
+	 */
+	public static function resolve( $url, $object_id, $post_type ) {
+		if ( null === $object_id ) {
+			return '' === $post_type ? self::validate( $url ) : new WP_Error( 'odvr_invalid_target_reference', __( '投稿IDと投稿タイプの組み合わせが無効です。', 'od-visual-regression' ), array( 'status' => 400 ) );
+		}
+		if ( ! is_int( $object_id ) || $object_id < 1 || $object_id > 2147483647 || ! is_string( $post_type ) ) {
+			return new WP_Error( 'odvr_invalid_target_reference', __( '投稿IDと投稿タイプの組み合わせが無効です。', 'od-visual-regression' ), array( 'status' => 400 ) );
+		}
+		$post = get_post( $object_id );
+		$type = get_post_type_object( $post_type );
+		if ( ! $post || ! $type || ! $type->public || ! is_post_type_viewable( $type ) || $post->post_type !== $post_type || ! is_post_publicly_viewable( $post ) || '' !== $post->post_password ) {
+			return new WP_Error( 'odvr_invalid_target_reference', __( '公開状態の投稿を選択してください。', 'od-visual-regression' ), array( 'status' => 400 ) );
+		}
+		return self::validate( get_permalink( $post ) );
+	}
+
+	/**
 	 * 共通の検証エラーを生成する。
 	 *
 	 * @return WP_Error URLの形式エラー。
