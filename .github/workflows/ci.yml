@@ -44,8 +44,9 @@ jobs:
       - run: npm run env:cli -- eval-file tests/content-api.php
       - run: npm run env:cli -- eval-file tests/contracts.php
       - run: npm run env:cli -- eval-file tests/database.php
+      - run: npm run env:cli -- eval-file tests/repositories.php
       - name: MultisiteのDB分離とネットワーク拒否
         run: |
-          npx wp-env run tests-cli bash -lc 'wp core multisite-convert --title=ODVR-test --quiet && wp plugin activate od-visual-regression --quiet && wp eval-file wp-content/plugins/od-visual-regression/tests/database-multisite.php'
+          npx wp-env run tests-cli bash -lc 'wp core multisite-convert --title=ODVR-test --quiet && wp plugin activate od-visual-regression --quiet && wp eval-file wp-content/plugins/od-visual-regression/tests/database-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/repositories.php'
       - if: always()
         run: npm run env:stop

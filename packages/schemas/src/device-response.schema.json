@@ -97,8 +97,7 @@
               }
             }
           },
-          "minItems": 0,
-          "maxItems": 100
+          "minItems": 0
         }
       }
     }

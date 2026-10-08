@@ -2,7 +2,7 @@
 
 対象は [Issue #2](https://github.com/Olein-jp/od-visual-regression/issues/2)、根拠は [仕様書v1.1](specification-v1.1.md) の§14〜19・§27〜34・§44・§73。これは実装前の設計案であり、採用はこの文書のPRへの合意で確定する。製品コード・JSON Schema・クラウド設定は変更しない。
 
-DB導入・更新・診断と初期Device（#27）の実装内容は [database.md](database.md) を参照する。以下の設計当時の記述と、RepositoryやRun/Retentionの実装状況は区別する。
+DB導入・更新・診断と初期Device（#27）の実装内容は [database.md](database.md) を参照する。Suite/Target/Device Repository（#28）は[configuration-repositories.md](configuration-repositories.md)を参照する。以下の設計当時の記述と、Run/Retentionの実装状況は区別する。
 
 ## 現状と基本方針
 
@@ -46,7 +46,7 @@ JSONはMySQLのネイティブJSON型に依存せず `longtext` へ `wp_json_enc
 
 設定JSONに `settings_version: 1`、重複のない `device_ids`、撮影設定、Ignore Selector、許可Origin、判定閾値を保存する。DeviceはSuite間で共有し、Suiteとの関連を `device_ids` で表す。撮影設定の項目名・既定値は現在のCaptureSettingsを引き継ぐ。差分率は0〜1、0.001以下はUNCHANGED、0.001超〜0.01未満はREVIEW、0.01以上はCHANGED。`review_threshold < changed_threshold` を必須とする。
 
-Dispatcher接続・Secret・HTTP Basic認証・Retention既定値はサイト設定であり、Suite設定には入れない。サイト設定はOptions API、秘密情報の扱いは #4で確定する。
+Dispatcher接続・Secret・HTTP Basic認証・Retention既定値はサイト設定。後から確定した製品API契約に従い、Suite別のRetention値はSuiteの保存JSONに保持し、サイト既定値とは区別する。サイト設定はOptions API、秘密情報の扱いは #4で確定する。
 
 ### `{prefix}odvr_targets`
 

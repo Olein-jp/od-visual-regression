@@ -56,9 +56,14 @@ function odvr_ms_db_die_handler() {
 function odvr_test_multisite_database() {
 	global $wpdb;
 	odvr_ms_db_assert( is_multisite(), 'Multisite実機で検証する' );
-	$parent_id      = get_current_blog_id();
-	$parent_table   = ODVR_DB::table( 'devices' );
-	$parent_rows    = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i ORDER BY id', $parent_table ), ARRAY_A );
+	$parent_id         = get_current_blog_id();
+	$parent_table      = ODVR_DB::table( 'devices' );
+	$parent_rows       = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i ORDER BY id', $parent_table ), ARRAY_A );
+	$parent_repository = new ODVR_Device_Repository();
+	$parent_data       = array();
+	foreach ( ODVR_DB_Schema::definitions() as $suffix => $definition ) {
+		$parent_data[ $suffix ] = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i ORDER BY id', ODVR_DB::table( $suffix ) ), ARRAY_A );
+	}
 	$parent_version = get_option( 'odvr_db_version' );
 	$parent_cap     = get_role( 'administrator' )->has_cap( 'manage_odvr' );
 	$rejected       = false;
@@ -93,13 +98,40 @@ function odvr_test_multisite_database() {
 			ODVR_Activator::activate();
 			odvr_ms_db_assert( true === ODVR_DB::diagnose() && get_role( 'administrator' )->has_cap( 'manage_odvr' ), 'サイト単位有効化で5テーブルと権限を導入する' );
 			odvr_ms_db_assert( '3' === $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $child_table ) ), '子サイトも初期Deviceを独立して持つ' );
-			$wpdb->update( $child_table, array( 'viewport_width' => 777 ), array( 'slug' => 'desktop' ) );
+			$fixtures     = json_decode( file_get_contents( __DIR__ . '/contract-fixtures.json' ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- ローカルの固定fixtureだけを読む.
+			$suite_input  = null;
+			$target_input = null;
+			foreach ( $fixtures as $fixture ) {
+				if ( $fixture->valid && 'suite-create-request' === $fixture->schema && null === $suite_input ) {
+					$suite_input = $fixture->value; }
+				if ( $fixture->valid && 'target-create-request' === $fixture->schema && null === $target_input ) {
+					$target_input = $fixture->value; }
+			}
+			$child_suite = ( new ODVR_Suite_Repository() )->create( $suite_input, 1 );
+			odvr_ms_db_assert( is_array( $child_suite ), '子サイトのSuiteを同じRepositoryで保存する' );
+			$target_input->enabled = true;
+			$child_target          = ( new ODVR_Target_Repository() )->create( $child_suite['id'], $target_input );
+			odvr_ms_db_assert( is_array( $child_target ) && $child_suite['id'] === $child_target['suite_id'], '子サイトのTargetは子サイトのSuiteだけへ所属する' );
+			$wrong_site = $parent_repository->disable( 1 );
+			odvr_ms_db_assert( is_wp_error( $wrong_site ) && 'odvr_site_mismatch' === $wrong_site->get_error_code(), '親Repositoryで子サイトの同じDevice IDを操作できない' );
+			$child_device = ( new ODVR_Device_Repository() )->update(
+				1,
+				(object) array(
+					'schema_version' => 1,
+					'viewport_width' => 777,
+				)
+			);
+			odvr_ms_db_assert( is_array( $child_device ) && 777 === $child_device['viewport_width'], '子サイトのDeviceだけを編集する' );
+
 			ODVR_Deactivator::deactivate();
 			odvr_ms_db_assert( '777' === $wpdb->get_var( $wpdb->prepare( 'SELECT viewport_width FROM %i WHERE slug = %s', $child_table, 'desktop' ) ), '子サイト無効化でもデータを保持する' );
 		} finally {
 			restore_current_blog();
 		}
 		odvr_ms_db_assert( get_current_blog_id() === $parent_id && $parent_rows === $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i ORDER BY id', $parent_table ), ARRAY_A ), '子サイト操作が親サイトの同じ数値IDのデータを変更しない' );
+		foreach ( $parent_data as $suffix => $rows ) {
+			odvr_ms_db_assert( $rows === $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i ORDER BY id', ODVR_DB::table( $suffix ) ), ARRAY_A ), '子サイトRepositoryの操作後も親の全行を保持する: ' . $suffix );
+		}
 	} finally {
 		wp_delete_site( $site_id );
 	}
