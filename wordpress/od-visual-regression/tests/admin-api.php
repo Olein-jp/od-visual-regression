@@ -196,7 +196,7 @@ function odvr_test_admin_api() {
 		$value = json_decode( $body );
 		odvr_admin_check( true === ( new ODVR_Contract_Validator() )->validate( 'dispatch-request', $value ), 'Dispatchは製品Schemaで検証する' );
 		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE uuid = %s', ODVR_DB::table( 'runs' ), $value->run_uuid ), ARRAY_A );
-		odvr_admin_check( $row && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE run_id = %d AND status = %s', ODVR_DB::table( 'snapshots' ), $row['id'], 'PENDING' ) ) && hash_equals( $row['runner_token_hash'], hash( 'sha256', $value->runner_token ) ), 'Dispatchより先に固定Manifest・pending・Token HashをCOMMITする' );
+		odvr_admin_check( $row && (int) $row['total_snapshots'] === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE run_id = %d AND status = %s', ODVR_DB::table( 'snapshots' ), $row['id'], 'PENDING' ) ) && hash_equals( $row['runner_token_hash'], hash( 'sha256', $value->runner_token ) ), 'Dispatchより先に固定Manifest・pending・Token HashをCOMMITする' );
 		$posts[] = hash( 'sha256', $body );
 		if ( isset( $ledger[ $value->run_uuid ] ) ) {
 			odvr_admin_check( hash_equals( $ledger[ $value->run_uuid ]['digest'], hash( 'sha256', $body ) ), '応答喪失の再送でもbody・Token・UUIDを変えない' ); }
@@ -655,6 +655,81 @@ function odvr_test_admin_api() {
 		odvr_admin_check( ! is_wp_error( $auth->authorize( $complete_bearer, $complete_uuid, 'complete' ) ) && is_wp_error( $auth->authorize( $complete_bearer, $complete_uuid, 'credentials' ) ), 'complete後のTokenもCompleteだけに限定する' );
 		$capacity = odvr_admin_request( $admin, 'GET', '/settings' )->get_data()['item']->storage_bytes;
 		odvr_admin_check( is_int( $capacity ) && $capacity >= strlen( $png ), '私有保存領域の使用量を表示する' );
+
+		$second_target       = clone $target;
+		$second_target->url .= '/second';
+		odvr_admin_check( 201 === odvr_admin_request( $admin, 'POST', '/suites/' . $suite_id . '/targets', $second_target )->get_status(), '部分完了用の2つ目のTargetを追加する' );
+		$partial_created = odvr_admin_request( $admin, 'POST', '/suites/' . $suite_id . '/runs', $run_input );
+		odvr_admin_check( 202 === $partial_created->get_status(), '部分完了用Runを作成する' );
+		$partial_uuid   = $partial_created->get_data()['item']->run_uuid;
+		$partial_id     = ( new ODVR_Run_Repository() )->resolve_uuid( $partial_uuid );
+		$partial_bearer = 'Bearer ' . $ledger[ $partial_uuid ]['payload']->runner_token;
+		odvr_admin_check(
+			200 === odvr_admin_request(
+				0,
+				'GET',
+				'/runner/runs/' . $partial_uuid . '/manifest',
+				null,
+				array(),
+				array(
+					'Authorization'       => $partial_bearer,
+					'X-ODVR-Execution-ID' => 'fixture-execution',
+				)
+			)->get_status(),
+			'部分完了用Runを開始する'
+		);
+		odvr_admin_check( $manager->progress( $partial_uuid, $progress ), '部分完了用RunのVersionを保存する' );
+		$partial_rows   = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE run_id = %d ORDER BY id', ODVR_DB::table( 'snapshots' ), $partial_id ), ARRAY_A );
+		$image_snapshot = null;
+		foreach ( $partial_rows as $partial_row ) {
+			$meta                      = json_decode( $partial_row['metadata'] );
+			$partial_result            = clone $result;
+			$partial_result->target_id = (int) $partial_row['target_id'];
+			$partial_result->device_id = (int) $partial_row['device_id'];
+			$data                      = array();
+			if ( $target_id === $partial_result->target_id ) {
+				$partial_result->status          = 'UNCHANGED';
+				$partial_result->baseline_width  = 1;
+				$partial_result->baseline_height = 1;
+				$partial_result->diff_pixels     = 0;
+				$partial_result->total_pixels    = 1;
+				$partial_result->diff_ratio      = 0;
+				$partial_digest                  = ODVR_Environment::digest( $partial_result );
+				foreach ( array( 'image', 'diff' ) as $kind ) {
+					$partial_ticket = odvr_admin_check( $storage->stage( $partial_uuid, $png, 1, 1 ), '部分完了fixtureのPNGを検証する' );
+					$partial_path   = odvr_admin_check(
+						$storage->with_run_lock(
+							$partial_uuid,
+							true,
+							function () use ( $storage, $partial_ticket, $suite_row, $meta, $partial_digest, $kind ) {
+								return $storage->promote( $partial_ticket, $suite_row['uuid'], $meta->target->id, $meta->device->slug, $partial_digest, 'diff' === $kind );
+							}
+						),
+						'部分完了fixtureのPNGを保存する'
+					);
+					$data[ 'image' === $kind ? 'image_path' : 'diff_path' ] = $partial_path;
+				}
+				$meta->image_sha256 = hash( 'sha256', $png );
+				$meta->diff_sha256  = hash( 'sha256', $png );
+				$image_snapshot     = (int) $partial_row['id'];
+			} else {
+				$partial_result->status        = 'ERROR';
+				$partial_result->width         = null;
+				$partial_result->height        = null;
+				$partial_result->error_code    = 'SNAPSHOT_FAILED';
+				$partial_result->error_message = ODVR_Run_Manager::error_message( 'SNAPSHOT_FAILED' );
+			}
+			odvr_admin_check( ( new ODVR_Contract_Validator() )->validate( 'snapshot-result', $partial_result ), '部分完了fixtureの結果を契約検証する' );
+			$meta->result        = $partial_result;
+			$meta->result_digest = ODVR_Environment::digest( $partial_result );
+			foreach ( array( 'status', 'width', 'height', 'baseline_width', 'baseline_height', 'duration_ms', 'http_status', 'diff_pixels', 'total_pixels', 'diff_ratio', 'error_code', 'error_message' ) as $field ) {
+				$data[ $field ] = $partial_result->$field; }
+			$data['metadata'] = wp_json_encode( $meta );
+			$wpdb->update( ODVR_DB::table( 'snapshots' ), $data, array( 'id' => (int) $partial_row['id'] ) );
+		}
+		$partial = odvr_admin_check( $manager->finish( $partial_uuid, $completed ), '成功・ERRORのあるRunを確定する' );
+		odvr_admin_check( 'partial' === $partial->status && ! is_wp_error( $auth->authorize( $partial_bearer, $partial_uuid, 'complete' ) ) && is_wp_error( $auth->authorize( $partial_bearer, $partial_uuid, 'manifest' ) ), 'partialもComplete再送だけに限定する' );
+		odvr_admin_check( 200 === odvr_admin_request( $admin, 'GET', '/snapshots/' . $image_snapshot . '/image' )->get_status(), '部分完了Runの成功画像も管理APIで配信する' );
 
 		$history   = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE suite_id = %d', ODVR_DB::table( 'runs' ), $suite_id ), ARRAY_A );
 		$persisted = wp_json_encode( $history ) . wp_json_encode( $wpdb->get_results( $wpdb->prepare( 'SELECT option_value FROM %i WHERE option_name LIKE %s', $wpdb->options, $wpdb->esc_like( 'odvr_' ) . '%' ), ARRAY_A ) );
