@@ -6,7 +6,7 @@ WordPress更新前後の画面差分を検出するシステムです。添付�
 
 - `apps/runner`：Playwright・Chromiumによるページ撮影とpixelmatchによる比較
 - `packages/shared`：Device型、プリセット、共通設定、差分判定
-- `packages/schemas`：DeviceとプロトタイプManifestのJSON Schema
+- `packages/schemas`：Device・プロトタイプManifest・製品APIのJSON SchemaとNode検証器
 - `wordpress/od-visual-regression`：WordPressプラグインのひな形
 - `docs`：仕様書、開発手順、セキュリティ上の制限、実装状況
 
@@ -22,6 +22,8 @@ npm run runner -- docs/prototype-manifest.example.json artifacts/after artifacts
 ```
 
 撮影URLとリソースのOriginをManifestで指定します。内部IPへのアクセスは拒否するため、現在はlocalhost上のWordPressを撮影できません。
+
+製品APIの共通契約・検証手順は [API契約](docs/api-contracts.md) を参照してください。
 
 詳細は [開発手順](docs/development.md)、[実装状況](docs/implementation-status.md)、[セキュリティ](docs/security.md)、[仕様書 v1.1](docs/specification-v1.1.md) を参照してください。
 

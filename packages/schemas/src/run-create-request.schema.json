@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://odvr.example/schemas/run-create-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "baseline_mode"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "baseline_mode": {
+      "enum": [
+        "pinned",
+        "previous",
+        "specific"
+      ]
+    },
+    "reference_run_id": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "baseline_mode": {
+            "const": "specific"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "reference_run_id"
+        ],
+        "properties": {
+          "reference_run_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          }
+        }
+      },
+      "else": {
+        "not": {
+          "required": [
+            "reference_run_id"
+          ],
+          "properties": {
+            "reference_run_id": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            }
+          }
+        }
+      }
+    }
+  ]
+}

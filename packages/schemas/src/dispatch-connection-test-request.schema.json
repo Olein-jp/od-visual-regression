@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://odvr.example/schemas/dispatch-connection-test-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "site_id",
+    "callback_base"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "site_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,100}$(?![\\s\\S])"
+    },
+    "callback_base": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2048
+    }
+  }
+}

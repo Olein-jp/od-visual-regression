@@ -19,6 +19,7 @@ class PluginBuildTest(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         shutil.copytree(ROOT / "scripts", self.root / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(ROOT / "packages" / "schemas" / "src", self.root / "packages" / "schemas" / "src")
         self.plugin = self.root / "wordpress" / SLUG
         shutil.copytree(ROOT / "wordpress" / SLUG, self.plugin)
         self.version = re.search(r"Version:\s*(\S+)", (self.plugin / f"{SLUG}.php").read_text())[1]
@@ -68,7 +69,18 @@ class PluginBuildTest(unittest.TestCase):
             for path in (self.plugin / "languages").iterdir():
                 if path.suffix in {".mo", ".po", ".pot"}:
                     self.assertIn(f"{SLUG}/languages/{path.name}", names)
+            for path in (ROOT / "packages" / "schemas" / "src").glob("*.schema.json"):
+                self.assertEqual(archive.read(f"{SLUG}/schemas/{path.name}"), path.read_bytes())
             self.assertIsNone(archive.testzip())
+
+    def test_missing_schemas_preserves_archive(self):
+        shutil.rmtree(self.root / "packages" / "schemas" / "src")
+        self.assert_preserved()
+
+    def test_schema_symlink_preserves_archive(self):
+        source = self.root / "packages" / "schemas" / "src"
+        (source / "linked.schema.json").symlink_to(source / "error.schema.json")
+        self.assert_preserved()
 
     def test_tag_matches_plugin_version(self):
         result = self.run_build("--tag", f"plugin-v{self.version}")

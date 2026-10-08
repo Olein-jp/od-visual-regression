@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'wordpress/**'
+      - 'packages/schemas/src/**'
       - 'scripts/build-plugin.*'
       - 'scripts/tests/test_build_plugin.py'
       - '.github/workflows/plugin-build.yml'
@@ -13,6 +14,7 @@ on:
   pull_request:
     paths:
       - 'wordpress/**'
+      - 'packages/schemas/src/**'
       - 'scripts/build-plugin.*'
       - 'scripts/tests/test_build_plugin.py'
       - '.github/workflows/plugin-build.yml'

@@ -1,0 +1,565 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://odvr.example/schemas/snapshot-response.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "item"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_id",
+        "device_id",
+        "status",
+        "width",
+        "height",
+        "baseline_width",
+        "baseline_height",
+        "dimension_changed",
+        "diff_pixels",
+        "total_pixels",
+        "diff_ratio",
+        "duration_ms",
+        "http_status",
+        "error_code",
+        "error_message",
+        "no_baseline_reason",
+        "snapshot_id",
+        "has_current_image",
+        "has_diff_image",
+        "has_baseline_image"
+      ],
+      "properties": {
+        "target_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "device_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "status": {
+          "enum": [
+            "PENDING",
+            "CAPTURED",
+            "NO_BASELINE",
+            "UNCHANGED",
+            "REVIEW",
+            "CHANGED",
+            "ERROR"
+          ]
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16384
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16384
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "baseline_width": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16384
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "baseline_height": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16384
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dimension_changed": {
+          "type": "boolean"
+        },
+        "diff_pixels": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 40000000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total_pixels": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 40000000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diff_ratio": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5400000
+        },
+        "http_status": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 599
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "enum": [
+                "SNAPSHOT_FAILED",
+                "NAVIGATION_FAILED",
+                "HTTP_ERROR",
+                "CAPTURE_FAILED",
+                "CONTEXT_CLOSE_FAILED",
+                "RUN_ABORTED",
+                "RUN_DEADLINE_EXCEEDED",
+                "DISPATCH_TIMEOUT"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "no_baseline_reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "new_target",
+                "new_device",
+                "incompatible",
+                "missing",
+                "corrupt"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snapshot_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "has_current_image": {
+          "type": "boolean"
+        },
+        "has_diff_image": {
+          "type": "boolean"
+        },
+        "has_baseline_image": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "CAPTURED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "error_code": {
+                "type": "null"
+              },
+              "error_message": {
+                "type": "null"
+              },
+              "no_baseline_reason": {
+                "type": "null"
+              },
+              "baseline_width": {
+                "type": "null"
+              },
+              "baseline_height": {
+                "type": "null"
+              },
+              "diff_pixels": {
+                "type": "null"
+              },
+              "total_pixels": {
+                "type": "null"
+              },
+              "diff_ratio": {
+                "type": "null"
+              },
+              "dimension_changed": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "NO_BASELINE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "error_code": {
+                "type": "null"
+              },
+              "error_message": {
+                "type": "null"
+              },
+              "no_baseline_reason": {
+                "enum": [
+                  "new_target",
+                  "new_device",
+                  "incompatible",
+                  "missing",
+                  "corrupt"
+                ]
+              },
+              "baseline_width": {
+                "type": "null"
+              },
+              "baseline_height": {
+                "type": "null"
+              },
+              "diff_pixels": {
+                "type": "null"
+              },
+              "total_pixels": {
+                "type": "null"
+              },
+              "diff_ratio": {
+                "type": "null"
+              },
+              "dimension_changed": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "UNCHANGED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "error_code": {
+                "type": "null"
+              },
+              "error_message": {
+                "type": "null"
+              },
+              "no_baseline_reason": {
+                "type": "null"
+              },
+              "baseline_width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "baseline_height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "diff_pixels": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 40000000
+              },
+              "total_pixels": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40000000
+              },
+              "diff_ratio": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "REVIEW"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "error_code": {
+                "type": "null"
+              },
+              "error_message": {
+                "type": "null"
+              },
+              "no_baseline_reason": {
+                "type": "null"
+              },
+              "baseline_width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "baseline_height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "diff_pixels": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 40000000
+              },
+              "total_pixels": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40000000
+              },
+              "diff_ratio": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "CHANGED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "error_code": {
+                "type": "null"
+              },
+              "error_message": {
+                "type": "null"
+              },
+              "no_baseline_reason": {
+                "type": "null"
+              },
+              "baseline_width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "baseline_height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16384
+              },
+              "diff_pixels": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 40000000
+              },
+              "total_pixels": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40000000
+              },
+              "diff_ratio": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "ERROR"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "width": {
+                "type": "null"
+              },
+              "height": {
+                "type": "null"
+              },
+              "baseline_width": {
+                "type": "null"
+              },
+              "baseline_height": {
+                "type": "null"
+              },
+              "diff_pixels": {
+                "type": "null"
+              },
+              "total_pixels": {
+                "type": "null"
+              },
+              "diff_ratio": {
+                "type": "null"
+              },
+              "no_baseline_reason": {
+                "type": "null"
+              },
+              "error_code": {
+                "enum": [
+                  "SNAPSHOT_FAILED",
+                  "NAVIGATION_FAILED",
+                  "HTTP_ERROR",
+                  "CAPTURE_FAILED",
+                  "CONTEXT_CLOSE_FAILED",
+                  "RUN_ABORTED",
+                  "RUN_DEADLINE_EXCEEDED",
+                  "DISPATCH_TIMEOUT"
+                ]
+              },
+              "error_message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "dimension_changed": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

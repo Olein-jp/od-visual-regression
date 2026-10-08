@@ -23,6 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/includes/class-odvr-capabilities.php';
 require_once __DIR__ . '/includes/class-odvr-target-url.php';
+require_once __DIR__ . '/includes/class-odvr-contract-validator.php';
 require_once __DIR__ . '/includes/class-odvr-activator.php';
 require_once __DIR__ . '/includes/class-odvr-deactivator.php';
 require_once __DIR__ . '/includes/class-odvr-plugin.php';
