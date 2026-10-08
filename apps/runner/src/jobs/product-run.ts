@@ -2,7 +2,7 @@ import { readFile, open, rename, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { chromium, type Browser } from 'playwright';
-import type { CompleteRequest, RunManifest, RunState, SnapshotResult } from '@odvr/shared';
+import type { CompleteRequest, NetworkDiagnostics, RunManifest, RunState, SnapshotResult } from '@odvr/shared';
 import { WordPressClient, WordPressApiError, PRODUCT_MESSAGES, type SnapshotImages, type WordPressClientOptions } from '../api/client.js';
 import { createContext, BROWSER_LAUNCH_OPTIONS } from '../browser/context-factory.js';
 import { capturePage } from '../browser/screenshot.js';
@@ -43,8 +43,9 @@ async function capture(browser:Browser,manifest:RunManifest,pair:Pair,transport:
   const context=await createContext(browser,device);
   let failure:unknown;
   let result:Captured|undefined;
+  let diagnostics:NetworkDiagnostics|undefined;
   try {
-    const diagnostics=await installNetworkGuard(context,manifest.allowed_origins,{client:transport,targetKey:`${pair.target_id}:${pair.device_id}`,auth});
+    diagnostics=await installNetworkGuard(context,manifest.allowed_origins,{client:transport,targetKey:`${pair.target_id}:${pair.device_id}`,auth});
     const page=await context.newPage();let crashed=false;
     page.on('crash',()=>{crashed=true;});
     let response;
@@ -56,6 +57,7 @@ async function capture(browser:Browser,manifest:RunManifest,pair:Pair,transport:
     result={image,httpStatus:response.status()};
   } catch(error) { failure=error; }
   try { await context.close(); } catch { failure ??= new SnapshotError('CONTEXT_CLOSE_FAILED'); }
+  if(diagnostics?.blocked_resource_count) failure ??= new SnapshotError('RESOURCE_BLOCKED');
   if(failure) throw failure;
   return result!;
 }
