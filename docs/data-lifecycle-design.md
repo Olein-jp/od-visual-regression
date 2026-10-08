@@ -2,6 +2,8 @@
 
 対象は [Issue #2](https://github.com/Olein-jp/od-visual-regression/issues/2)、根拠は [仕様書v1.1](specification-v1.1.md) の§14〜19・§27〜34・§44・§73。これは実装前の設計案であり、採用はこの文書のPRへの合意で確定する。製品コード・JSON Schema・クラウド設定は変更しない。
 
+DB導入・更新・診断と初期Device（#27）の実装内容は [database.md](database.md) を参照する。以下の設計当時の記述と、RepositoryやRun/Retentionの実装状況は区別する。
+
 ## 現状と基本方針
 
 RunnerはローカルのManifestとPNGを使って撮影・比較できるが、WordPressのDB・Repository・Run管理は未実装。`packages/shared/src/index.ts` はDevice・撮影設定・差分判定を定義しており、現在のManifestはプロトタイプ専用である。

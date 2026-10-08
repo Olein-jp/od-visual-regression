@@ -6,7 +6,7 @@
 |---|---|
 | Phase 1 Runner Prototype | URL・DeviceごとのChromium全ページ撮影、ローカルPNG出力を実装 |
 | Phase 2 Visual Diff | pixelmatch、寸法正規化、差分率、判定、差分PNGを実装 |
-| Phase 3 WordPress Plugin Core | 初期化・有効化/無効化・Administrator向けmanage_odvr権限・公開コンテンツ選択APIを実装。DB・管理画面は未実装 |
+| Phase 3 WordPress Plugin Core | 初期化・権限・公開コンテンツ選択API・5テーブルの導入/更新/診断・初期Deviceを実装。Repository・Run・管理画面は未実装 |
 | Phase 4 Runner API | 製品用Schema・共通型・Node/PHP検証器を実装。APIルート・Token・Uploadは未実装 |
 | Phase 5 Cloud Run | 未実装 |
 | Phase 6 Admin UI | 未実装 |
@@ -18,7 +18,7 @@ CIはTypeScriptの型検査・ビルド、Schema検証、Nodeの単体テスト�
 
 ## DB・Run・Baseline・Retentionの設計
 
-Issue #2の設計案は [data-lifecycle-design.md](data-lifecycle-design.md) にまとめています。5テーブル、Run開始時のManifest固定、Baseline選択、再送時の集計、Retentionと削除、移行・Multisite方針、5段階の実装順序を定義しています。設計の採用と製品への実装は別であり、DB・Schema・APIはまだ変更していません。
+Issue #2の設計案は [data-lifecycle-design.md](data-lifecycle-design.md) にまとめています。5テーブル、Run開始時のManifest固定、Baseline選択、再送時の集計、Retentionと削除、移行・Multisite方針、5段階の実装順序を定義しています。設計の採用と製品への実装は別であり、DBの導入・更新・診断と初期Deviceは#27で実装しました。利用手順は [database.md](database.md) を参照してください。RepositoryとRun/Retentionは後続です。
 
 ## 共通API・Runner認証・非公開Storageの設計
 
