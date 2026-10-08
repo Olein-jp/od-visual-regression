@@ -100,7 +100,8 @@ export async function executeProductRun(client:WordPressClient,options:ProductRu
       if(browser.version()!==versions.chromium) throw new Error('ChromiumのVersionが一致しません。');
       if(client.signal.aborted) throw new WordPressApiError('odvr_run_deadline',null);
       const policy=new DestinationPolicy({captureOrigins:manifest.allowed_origins,profile:options.profile,localDestination:options.localDestination});
-      transport=dependencies.transport ? dependencies.transport(policy,client.deadline) : new PinnedHttpClient({policy,runDeadline:client.deadline});
+      // 制御側4接続/256MiBと合わせて既存のRun全体上限に収める。
+      transport=dependencies.transport ? dependencies.transport(policy,client.deadline) : new PinnedHttpClient({policy,runDeadline:client.deadline,limits:{runConnections:12,runBytes:768*1024*1024}});
       const workers=await Promise.allSettled(Array.from({length:manifest.settings.concurrency},async()=>{
         while(!fatal && !client.signal.aborted) {
           if(!browser!.isConnected()) { fatal=new Error('Browserの接続が終了しました。');stop();return; }

@@ -27,7 +27,7 @@ Job の非秘密環境値は `ODVR_SITE_ID`、`ODVR_RUN_UUID`、`ODVR_TOKEN_EXPI
 
 ## 実行と再開
 
-制御 API は共有の固定 HTTP transport で、登録 callback 配下の Manifest/Credentials/Baseline/Upload/Progress/Complete だけに接続する。Bearer と Execution header を付け、Cookie と Basic を付けない。撮影は別 transport と Browser Context を所有する。Credentials の Basic は Manifest の許可 Origin に一致するときだけ撮影通信へ注入し、Browser の httpCredentials やページ・ログ・結果 JSON へ渡さない。
+制御 API は共有の固定 HTTP transport で、登録 callback 配下の Manifest/Credentials/Baseline/Upload/Progress/Complete だけに接続する。Bearer と Execution header を付け、Cookie と Basic を付けない。撮影は別 transport と Browser Context を所有する。二つの transport の合計上限を16接続/1GiBに収めるため、制御を4接続/256MiB、撮影を12接続/768MiBに固定する。Credentials の Basic は Manifest の許可 Origin に一致するときだけ撮影通信へ注入し、Browser の httpCredentials やページ・ログ・結果 JSON へ渡さない。
 
 同じ Execution の pending だけを撮影する。参照なしは CAPTURED、固定 Baseline を比較できれば UNCHANGED/REVIEW/CHANGED、固定の新 Target/Device・非互換・欠損は理由付き NO_BASELINE とする。API の 404 は、固定 Baseline の `odvr_baseline_unavailable` と許可した理由が揃う場合だけ欠損に変換する。PNG の長さ・SHA・デコード失敗を正常な欠損に置き換えない。プロトタイプのローカル互換性エラーとは保存形式・状態を分ける。
 

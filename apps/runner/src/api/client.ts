@@ -72,7 +72,8 @@ export class WordPressClient {
     this.#token = options.token;
     this.#developmentOnly = options.profile === 'local';
     this.#deadline = Math.min(options.tokenExpiresAt,Date.now()+5400000);
-    this.#transport = options.transport ?? new PinnedHttpClient({policy,runDeadline:this.#deadline});
+    // 撮影側の12接続/768MiBと合わせ、Run全体16接続/1GiBを超えない。
+    this.#transport = options.transport ?? new PinnedHttpClient({policy,runDeadline:this.#deadline,limits:{runConnections:4,runBytes:256*1024*1024}});
     this.#timer = setTimeout(() => this.close(),this.#deadline-Date.now()); this.#timer.unref();
   }
   get deadline():number { return this.#deadline; }
