@@ -110,7 +110,7 @@ final class ODVR_DB {
 	 */
 	public static function writable() {
 		global $wpdb;
-		$rows  = $wpdb->get_results( $wpdb->prepare( 'SELECT option_name, option_value FROM %i WHERE option_name IN (%s, %s, %s)', $wpdb->options, 'odvr_db_version', 'odvr_db_error', 'odvr_db_upgrade_lock' ), ARRAY_A );
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT option_name, option_value FROM %i WHERE option_name IN (%s, %s, %s)', $wpdb->options, 'odvr_db_version', 'odvr_db_error', 'odvr_db_upgrade_lock' ), ARRAY_A );
 		if ( ! is_array( $rows ) || $wpdb->last_error ) {
 			return self::error( 'odvr_database_not_ready' );
 		}
