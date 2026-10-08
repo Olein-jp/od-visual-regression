@@ -588,13 +588,14 @@ final class ODVR_Run_Manager extends ODVR_Run_Repository {
 	/**
 	 * 初回Manifest取得でExecution IDを固定する。retryは同じIDだけ。
 	 *
-	 * @param string $uuid UUID.
-	 * @param string $execution_id Execution ID.
+	 * @param string      $uuid UUID.
+	 * @param string      $execution_id Execution ID.
+	 * @param string|null $authorization HTTP入口からのBearer。内部操作ではnull.
 	 * @return stdClass|WP_Error Manifest.
 	 */
-	public function start( $uuid, $execution_id ) {
+	public function start( $uuid, $execution_id, $authorization = null ) {
 		return $this->read(
-			function () use ( $uuid, $execution_id ) {
+			function () use ( $uuid, $execution_id, $authorization ) {
 				$before = $this->uuid_row( $uuid );
 				$this->checked( $this->expire( $this->integer( $before['id'], true ) ) );
 				if ( ! is_string( $execution_id ) || '' === $execution_id || strlen( $execution_id ) > 200 || preg_match( '/[\x00-\x1f\x7f]/', $execution_id ) ) {
@@ -602,9 +603,10 @@ final class ODVR_Run_Manager extends ODVR_Run_Repository {
 				}
 				return $this->checked(
 					$this->transaction(
-						function () use ( $uuid, $execution_id ) {
+						function () use ( $uuid, $execution_id, $authorization ) {
 								global $wpdb;
 								$row = $this->lock_run( $uuid );
+							$this->runner_authorization( $row, $authorization );
 							if ( ! in_array( $row['status'], array( 'queued', 'running' ), true ) || ( null !== $row['runner_execution_id'] && $row['runner_execution_id'] !== $execution_id ) ) {
 								$this->fail( 'odvr_run_conflict', 409 );
 							}
@@ -669,21 +671,23 @@ final class ODVR_Run_Manager extends ODVR_Run_Repository {
 	/**
 	 * ProgressでVersionを補完し、件数だけを再計算する。
 	 *
-	 * @param string   $uuid UUID.
-	 * @param stdClass $input Progress契約.
+	 * @param string      $uuid UUID.
+	 * @param stdClass    $input Progress契約.
+	 * @param string|null $authorization HTTP入口からのBearer。内部操作ではnull.
 	 * @return stdClass|WP_Error 状態.
 	 */
-	public function progress( $uuid, $input ) {
+	public function progress( $uuid, $input, $authorization = null ) {
 		return $this->read(
-			function () use ( $uuid, $input ) {
+			function () use ( $uuid, $input, $authorization ) {
 				$this->validate( 'progress-request', $input );
 				$row = $this->uuid_row( $uuid );
 				$this->checked( $this->expire( $this->integer( $row['id'], true ) ) );
 				return $this->checked(
 					$this->transaction(
-						function () use ( $uuid, $input ) {
+						function () use ( $uuid, $input, $authorization ) {
 							global $wpdb;
 							$row = $this->lock_run( $uuid );
+							$this->runner_authorization( $row, $authorization );
 							$this->running( $row, $input->runner_execution_id );
 							$environment = $this->checked( ODVR_Environment::versions( $this->checked( ODVR_Environment::decode( $row['environment'] ) ), $input->versions ) );
 							$state       = $this->state( $row );
@@ -708,6 +712,25 @@ final class ODVR_Run_Manager extends ODVR_Run_Repository {
 	}
 
 	/**
+	 * HTTP経由の状態確定ではロック取得後にもToken期限を検査する。
+	 *
+	 * @param array       $row Run行.
+	 * @param string|null $authorization Bearerまたは内部操作.
+	 * @return void
+	 */
+	private function runner_authorization( $row, $authorization ) {
+		if ( null === $authorization ) {
+			return;
+		}
+		if ( ! is_string( $authorization ) || ! preg_match( '/^Bearer ([A-Za-z0-9_-]{43})$/D', $authorization, $matches ) || ! is_string( $row['runner_token_hash'] ) || ! hash_equals( $row['runner_token_hash'], hash( 'sha256', $matches[1] ) ) || null === $row['runner_token_expires_at'] || ODVR_DB::utc_now() >= $row['runner_token_expires_at'] ) {
+			$this->fail( 'odvr_runner_unauthorized', 401 );
+		}
+		if ( in_array( $row['status'], array( 'queued', 'running' ), true ) && ( ODVR_DB::utc_now() >= $row['deadline_at'] || ( 'queued' === $row['status'] && ODVR_DB::utc_now() >= $this->checked( ODVR_DB::utc_datetime( $this->fixed( $row )->queued_deadline_at ) ) ) ) ) {
+			$this->fail( 'odvr_run_conflict', 409 );
+		}
+	}
+
+	/**
 	 * 実行中の同Executionだけを許可する。
 	 *
 	 * @param array  $row Run行.
@@ -723,13 +746,14 @@ final class ODVR_Run_Manager extends ODVR_Run_Repository {
 	/**
 	 * 同じCompleteだけを再送できる原子的な完了処理。
 	 *
-	 * @param string   $uuid UUID.
-	 * @param stdClass $input Complete契約.
+	 * @param string      $uuid UUID.
+	 * @param stdClass    $input Complete契約.
+	 * @param string|null $authorization HTTP入口からのBearer。内部操作ではnull.
 	 * @return stdClass|WP_Error 最終状態.
 	 */
-	public function finish( $uuid, $input ) {
+	public function finish( $uuid, $input, $authorization = null ) {
 		return $this->read(
-			function () use ( $uuid, $input ) {
+			function () use ( $uuid, $input, $authorization ) {
 				$this->validate( 'complete-request', $input );
 				if ( 'failed' === $input->outcome && self::error_message( $input->error_code ) !== $input->error_message ) {
 						$this->fail( 'odvr_invalid_payload', 400 );
@@ -738,9 +762,10 @@ final class ODVR_Run_Manager extends ODVR_Run_Repository {
 				$this->checked( $this->expire( $this->integer( $before['id'], true ) ) );
 				return $this->checked(
 					$this->transaction(
-						function () use ( $uuid, $input ) {
+						function () use ( $uuid, $input, $authorization ) {
 								global $wpdb;
-								$row         = $this->lock_run( $uuid );
+								$row = $this->lock_run( $uuid );
+							$this->runner_authorization( $row, $authorization );
 								$environment = $this->checked( ODVR_Environment::decode( $row['environment'] ) );
 								$digest      = ODVR_Environment::digest( $input );
 							if ( in_array( $row['status'], array( 'complete', 'partial', 'failed' ), true ) ) {

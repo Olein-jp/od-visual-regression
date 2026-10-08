@@ -323,3 +323,7 @@ DBの検証はWordPress 6.7と既定版、PHP 7.4、InnoDBで行い、MySQL/Mari
 ## Issue #31 の実装
 
 参照閉包の Retention、閉じた集合の削除確定、画像からの再開可能な削除、無効化時の失効、サイト別 Uninstall を実装した。[手順と検証範囲](retention-and-uninstall.md)を参照する。管理 API・画面への接続は後続で行う。
+
+## Issue #33 の実装
+
+Snapshotのpendingから終端への確定、画像と結果の再送判定、ファイル/DBの部分失敗回復、COUNTとCompleteのHTTP接続を実装した。[結果受付と検証](runner-results-api.md)を参照する。

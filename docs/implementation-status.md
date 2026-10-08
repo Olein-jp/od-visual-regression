@@ -7,7 +7,7 @@
 | Phase 1 Runner Prototype | URL・DeviceごとのChromium全ページ撮影、ローカルPNG出力を実装 |
 | Phase 2 Visual Diff | pixelmatch、寸法正規化、差分率、判定、差分PNGを実装 |
 | Phase 3 WordPress Plugin Core | 初期化・権限・公開コンテンツ選択API・5テーブルの導入/更新/診断・初期Deviceを実装。Suite/Target/DeviceのRepositoryを実装。Run・固定履歴・Environment・Baseline・期限処理とRetention・Uninstallを実装。管理画面は未実装 |
-| Phase 4 Runner API | 製品用Schema・共通型・Node/PHP検証器を実装。非公開Storage・認証画像配信を実装。管理REST・Settings・Run Token・Manifest/Credentials取得・署名Dispatchを実装。Upload・Baseline PNG・Progress/CompleteのHTTP接続は未実装 |
+| Phase 4 Runner API | 製品用Schema・共通型・Node/PHP検証器を実装。非公開Storage・認証画像配信を実装。管理REST・Settings・Run Token・Manifest/Credentials取得・署名Dispatchを実装。固定Baseline PNG・生multipart Upload・結果再送・Progress/CompleteのHTTP接続と経路診断を実装 |
 | Phase 5 Cloud Run | 未実装 |
 | Phase 6 Admin UI | 未実装 |
 | Phase 7 Hardening | 用途別policy・DNS全回答検査・固定HTTP transport・通信予算を実装。ブラウザ全HTTPの固定取得・Basic注入・Cookie/CORS/CSP・不要通信の抑止を実装。クラウド経路の検証は後続 |
@@ -22,7 +22,7 @@ Issue #2の設計案は [data-lifecycle-design.md](data-lifecycle-design.md) に
 
 ## 共通API・Runner認証・非公開Storageの設計
 
-Issue #4の設計案は [api-security-storage-design.md](api-security-storage-design.md) にまとめています。共通API/Schema/Version、Run Token、Snapshot再送、非公開Storageと画像配信、Basic認証の秘密受渡し、5段階の実装順序を定義しています。設計に沿って各Issueで製品実装を進めています。共通Schema・型・検証器は#26で実装しました。非公開Storage・管理画像配信は#29で実装しました。[private-storage.md](private-storage.md) に環境要件・診断・検証範囲を記録しています。管理API・Run Token・署名Dispatch送信は#32で実装しました。[設定・入口・検証範囲](admin-api-and-dispatch.md)を参照してください。結果Upload等のHTTP接続と実Dispatcher・クラウド設定は後続です。
+Issue #4の設計案は [api-security-storage-design.md](api-security-storage-design.md) にまとめています。共通API/Schema/Version、Run Token、Snapshot再送、非公開Storageと画像配信、Basic認証の秘密受渡し、5段階の実装順序を定義しています。設計に沿って各Issueで製品実装を進めています。共通Schema・型・検証器は#26で実装しました。非公開Storage・管理画像配信は#29で実装しました。[private-storage.md](private-storage.md) に環境要件・診断・検証範囲を記録しています。管理API・Run Token・署名Dispatch送信は#32で実装しました。[設定・入口・検証範囲](admin-api-and-dispatch.md)を参照してください。結果Upload・再送・Progress/Completeと固定Baseline配信は#33で実装しました。[結果受付・経路設定・検証](runner-results-api.md)を参照してください。実Runnerとの撮影接続・Dispatcher・クラウド設定は後続です。
 
 ## Dispatcher・Cloud Run・ローカルDocker・デプロイの設計
 

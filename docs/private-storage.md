@@ -43,7 +43,7 @@ define( 'ODVR_STORAGE_PUBLIC_BASES', array( 'https://uploads.example.test/site-u
 
 - `stage(run_uuid, png, width, height)` は検証後、Run排他ロックで `.staging/{run_uuid}/{request_uuid}.png` へ保存する。内部ticketはAPIへ返さない。
 - `with_run_lock(run_uuid, true, callback)` の中で `promote(ticket, suite_uuid, target_id, device_slug, result_digest, diff)` を呼ぶ。サーバー生成の `suite-{uuid}/run-{uuid}/target-{id}/{slug}-{digest}[-diff].png` を返す。同名を上書きせず、Run排他ロックを持たないrenameは拒否する。
-- Upload側はSuite→Run→SnapshotのDBロック取得・状態再確認後にRunのStorage排他ロックを取得し、rename・DBのpending条件付き更新・COMMITをロック内で完了する。二枚目のrenameやCOMMITに失敗しても、未参照ファイルを配信しない。呼出側はWP_Errorを見落とさずrollbackする。
+- Upload側はRunのStorage排他ロックの内側でSuite→Run→SnapshotのDBロックを取得し、状態再確認後にrename・DBのpending条件付き更新・COMMITをロック内で完了する。二枚目のrenameやCOMMITに失敗しても、未参照ファイルを配信しない。呼出側はWP_Errorを見落とさずrollbackする。
 - DBにはStorageルート相対パスとmetadata_version=1、`image_sha256` / `diff_sha256`を保存する。クライアントのfilename/pathを使用しない。PNGの全祖先とファイルのsymlink、realpath境界、相対パス形式を検査する。
 
 PNGはsignature・実サイズ・finfo・IHDRの型/寸法/画素数、全チャンクのCRCと並び、IDATの完全inflate・終端/展開長・各scanlineのfilter・GDの完全デコード・SHA-256を検査する。末尾データ・未知critical・APNG・圧縮された付加メタデータiCCP/zTXt/iTXtを拒否する。Adam7は各passを展開検査し、GDの既知のinterlace運用警告だけを区別する。他のdecode警告は拒否する。上限は1ファイル20MiB・1辺16384px・40,000,000画素。
@@ -64,4 +64,4 @@ Snapshotの確定状態、同サイトRun/Suite、deletingでないこと、固�
 
 PHP 7.4 / WordPress 7.1.3・6.7のwp-env Apacheで、PNG破損/CRC/展開/20MiB境界/寸法/digest/Adam7、実Cookie/nonce/権限、直URL拒否、pendingとCOMMIT前、rollback、固定Baseline/diff、symlink、cleanup、独立プロセスの読取削除競合を検証する。独立Multisiteの実子サイトでも保存先・診断Options・uploads/sites直URL・孤立staging・親サイト保持を確認する。CIは両WordPress Versionで実行する。
 
-Basicのorigin限定と複数aliasの成功/拒否は固定HTTP fixtureでも確認する。Nginx、実運用のBasic/TLS・alias・CDN、ネットワークfilesystem、停電耐性は本Issueでは実機未検証。手順の記載を設定完了の証拠にせず、各環境で上記canaryと運用確認を完了するまでreadyにしない。Uploadのraw multipart検証とRun全体の結合検証は後続Issueで行う。
+Basicのorigin限定と複数aliasの成功/拒否は固定HTTP fixtureでも確認する。Nginx、実運用のBasic/TLS・alias・CDN、ネットワークfilesystem、停電耐性は本Issueでは実機未検証。手順の記載を設定完了の証拠にせず、各環境で上記canaryと運用確認を完了するまでreadyにしない。Uploadのraw multipart検証と部分失敗回復は[#33](runner-results-api.md)で実装・検証した。Run全体の撮影・結合検証は後続Issueで行う。
