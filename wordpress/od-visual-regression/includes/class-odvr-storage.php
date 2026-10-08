@@ -528,7 +528,7 @@ final class ODVR_Storage extends ODVR_Repository {
 				}
 				$absolute = $this->root() . '/' . $path;
 				if ( ! file_exists( $absolute ) || is_link( $absolute ) ) {
-					$this->fail( 'odvr_image_unavailable', 404 );
+					$this->fail( 'odvr_image_unavailable', 404, array( 'reason' => ! file_exists( $absolute ) ? 'missing' : 'corrupt' ) );
 				}
 				$this->safe( $absolute );
 				if ( filesize( $absolute ) > ODVR_PNG::MAX_BYTES ) {

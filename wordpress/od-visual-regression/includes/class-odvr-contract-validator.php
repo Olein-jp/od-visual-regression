@@ -377,14 +377,38 @@ final class ODVR_Contract_Validator {
 	 * @return bool 判定.
 	 */
 	private function semantic( $name, $value, array $context ) {
+		$tuples = in_array( $name, array( 'progress-request', 'complete-request' ), true ) ? array( $value->versions ) : ( in_array( $name, array( 'run-manifest', 'stored-run-manifest' ), true ) ? array( $value->reference->versions ) : ( in_array( $name, array( 'run-environment', 'stored-run-environment' ), true ) ? array( $value ) : array() ) );
+		foreach ( $tuples as $tuple ) {
+			if ( null !== $tuple ) {
+				foreach ( array( 'runner', 'playwright', 'chromium' ) as $key ) {
+					if ( null !== $tuple->$key && ( '' === trim( $tuple->$key ) || preg_match( '/[\x00-\x1f\x7f]/', $tuple->$key ) ) ) {
+						return false; }
+				}
+			}
+		}
+		if ( 'snapshot-metadata' === $name ) {
+			if ( $value->target->id !== $value->reference->target_id || $value->device->id !== $value->reference->device_id || ( null === $value->reference->baseline_snapshot_id ? null === $value->reference->reason : null !== $value->reference->reason ) ) {
+				return false; }
+			if ( null === $value->result ) {
+				if ( null !== $value->result_digest || null !== $value->image_sha256 || null !== $value->diff_sha256 ) {
+					return false; }
+			} elseif ( ! $this->semantic( 'snapshot-result', $value->result, array() ) || $value->result->target_id !== $value->target->id || $value->result->device_id !== $value->device->id || null === $value->result_digest || ( 'ERROR' === $value->result->status ) !== ( null === $value->image_sha256 ) || in_array( $value->result->status, array( 'UNCHANGED', 'REVIEW', 'CHANGED' ), true ) !== ( null !== $value->diff_sha256 ) ) {
+				return false; }
+		}
+
 		if ( ! $this->walk( $value ) ) {
 			return false;
 		}
-		if ( 'run-manifest' === $name ) {
-			if ( $value->run->suite_id !== $value->suite->id || $value->run->created_at >= $value->run->deadline_at ) {
+		if ( in_array( $name, array( 'run-manifest', 'stored-run-manifest' ), true ) ) {
+			$wire = 'run-manifest' === $name;
+			if ( $wire && ( $value->run->suite_id !== $value->suite->id || $value->run->created_at >= $value->run->deadline_at ) ) {
 				return false;
 			}
-			foreach ( array( array( $value->targets, array( 'id' ) ), array( $value->devices, array( 'id', 'slug' ) ), array( $value->run->snapshot_states, array( 'snapshot_id' ) ) ) as $group ) {
+			$groups = array( array( $value->targets, array( 'id' ) ), array( $value->devices, array( 'id', 'slug' ) ) );
+			if ( $wire ) {
+				$groups[] = array( $value->run->snapshot_states, array( 'snapshot_id' ) );
+			}
+			foreach ( $groups as $group ) {
 				foreach ( $group[1] as $key ) {
 					$ids = array_column( $group[0], $key );
 					if ( count( array_unique( $ids ) ) !== count( $ids ) ) {
@@ -410,7 +434,8 @@ final class ODVR_Contract_Validator {
 					$pairs[] = $target->id . ':' . $device->id;
 				}
 			}
-			foreach ( array( $value->run->snapshot_states, $value->reference->snapshots ) as $entries ) {
+			$entries_groups = $wire ? array( $value->run->snapshot_states, $value->reference->snapshots ) : array( $value->reference->snapshots );
+			foreach ( $entries_groups as $entries ) {
 				$found = array();
 				foreach ( $entries as $entry ) {
 					$found[] = $entry->target_id . ':' . $entry->device_id;
@@ -420,14 +445,39 @@ final class ODVR_Contract_Validator {
 				}
 			}
 			foreach ( $value->reference->snapshots as $ref ) {
+				if ( null !== $ref->baseline_snapshot_id && null === $value->reference->versions ) {
+					return false;
+				}
 				if ( ( null === $ref->baseline_snapshot_id ? null === $ref->reason : null !== $ref->reason ) || ( null === $value->reference->run_id ? null !== $ref->baseline_snapshot_id || 'no_reference' !== $ref->reason : 'no_reference' === $ref->reason ) ) {
 					return false;
 				}
 			}
-			if ( 'specific' === $value->reference->mode && null === $value->reference->run_id ) {
+			if ( 'stored-run-manifest' === $name && null !== $value->http_auth_origin && ( 0 !== strpos( $value->http_auth_origin, 'https://' ) || ! in_array( $value->http_auth_origin, $value->allowed_origins, true ) ) ) {
+				return false; }
+			if ( ( 'specific' === $value->reference->mode && null === $value->reference->run_id ) || ( null === $value->reference->run_id && null !== $value->reference->versions ) ) {
 				return false;
 			}
 		}
+		if ( in_array( $name, array( 'run-environment', 'stored-run-environment' ), true ) ) {
+			$known = 0;
+			foreach ( array( 'runner', 'playwright', 'chromium' ) as $key ) {
+				$known += null !== $value->$key ? 1 : 0;
+			}
+			if ( 0 !== $known && 3 !== $known ) {
+				return false;
+			}
+			if ( 'stored-run-environment' === $name && null !== $value->completion ) {
+				if ( ! $this->semantic( 'run-state', $value->completion->response, array() ) || ! in_array( $value->completion->response->status, array( 'complete', 'partial', 'failed' ), true ) ) {
+					return false;
+				}
+				foreach ( array( 'runner', 'playwright', 'chromium' ) as $key ) {
+					if ( $value->$key !== $value->completion->request->versions->$key ) {
+						return false;
+					}
+				}
+			}
+		}
+
 		if ( in_array( $name, array( 'run-state', 'run-response', 'run-list-response' ), true ) ) {
 			$items = 'run-state' === $name ? array( $value ) : ( 'run-response' === $name ? array( $value->item ) : $value->items );
 			foreach ( $items as $item ) {

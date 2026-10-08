@@ -157,6 +157,34 @@ export type RunCreateResponse = {
         deadline_at: string;
     };
 };
+export type RunEnvironment = {
+    environment_version: 1;
+    wordpress: string;
+    php: string;
+    theme: {
+        name: string;
+        version: string | null;
+    };
+    parent_theme: {
+        name: string;
+        version: string | null;
+    } | null;
+    plugins: Array<{
+        id: string;
+        name: string;
+        version: string | null;
+    }>;
+    mu_plugins: Array<{
+        id: string;
+        name: string;
+        version: string | null;
+    }>;
+    locale: string;
+    site_url: string;
+    runner: string | null;
+    playwright: string | null;
+    chromium: string | null;
+};
 export type RunListResponse = {
     schema_version: 1;
     items: Array<{
@@ -330,6 +358,11 @@ export type RunManifest = {
             baseline_snapshot_id: number | null;
             reason: "no_reference" | "new_target" | "new_device" | "incompatible" | "missing" | "corrupt" | null;
         }>;
+        versions: {
+            runner: string;
+            playwright: string;
+            chromium: string;
+        } | null;
     };
     allowed_origins: Array<string>;
 };
@@ -522,6 +555,55 @@ export type SnapshotListResponse = {
         has_baseline_image: boolean;
     }>;
 };
+export type SnapshotMetadata = {
+    metadata_version: 1;
+    target: {
+        id: number;
+        url: string;
+        label: string;
+        object_id: number | null;
+        post_type: string;
+    };
+    device: {
+        id: number;
+        name: string;
+        slug: string;
+        viewport_width: number;
+        viewport_height: number;
+        device_scale_factor: number;
+        is_mobile: boolean;
+        has_touch: boolean;
+        user_agent?: string;
+    };
+    reference: {
+        target_id: number;
+        device_id: number;
+        baseline_snapshot_id: number | null;
+        reason: "no_reference" | "new_target" | "new_device" | "incompatible" | "missing" | "corrupt" | null;
+    };
+    image_sha256: string | null;
+    diff_sha256: string | null;
+    result_digest: string | null;
+    result: {
+        schema_version: 1;
+        target_id: number;
+        device_id: number;
+        status: "CAPTURED" | "NO_BASELINE" | "UNCHANGED" | "REVIEW" | "CHANGED" | "ERROR";
+        width: number | null;
+        height: number | null;
+        baseline_width: number | null;
+        baseline_height: number | null;
+        dimension_changed: boolean;
+        diff_pixels: number | null;
+        total_pixels: number | null;
+        diff_ratio: number | null;
+        duration_ms: number;
+        http_status: number | null;
+        error_code: "SNAPSHOT_FAILED" | "NAVIGATION_FAILED" | "HTTP_ERROR" | "CAPTURE_FAILED" | "CONTEXT_CLOSE_FAILED" | "RUN_ABORTED" | "RUN_DEADLINE_EXCEEDED" | "DISPATCH_TIMEOUT" | null;
+        error_message: string | null;
+        no_baseline_reason: "new_target" | "new_device" | "incompatible" | "missing" | "corrupt" | null;
+    } | null;
+};
 export type SnapshotResponse = {
     schema_version: 1;
     item: {
@@ -571,6 +653,114 @@ export type SnapshotUploadResponse = {
     snapshot_id: number;
     status: "CAPTURED" | "NO_BASELINE" | "UNCHANGED" | "REVIEW" | "CHANGED" | "ERROR";
     replayed: boolean;
+};
+export type StoredRunEnvironment = {
+    environment_version: 1;
+    wordpress: string;
+    php: string;
+    theme: {
+        name: string;
+        version: string | null;
+    };
+    parent_theme: {
+        name: string;
+        version: string | null;
+    } | null;
+    plugins: Array<{
+        id: string;
+        name: string;
+        version: string | null;
+    }>;
+    mu_plugins: Array<{
+        id: string;
+        name: string;
+        version: string | null;
+    }>;
+    locale: string;
+    site_url: string;
+    runner: string | null;
+    playwright: string | null;
+    chromium: string | null;
+    completion: {
+        digest: string;
+        request: {
+            schema_version: 1;
+            runner_execution_id: string;
+            versions: {
+                runner: string;
+                playwright: string;
+                chromium: string;
+            };
+            outcome: "finished" | "failed";
+            error_code: "SNAPSHOT_FAILED" | "NAVIGATION_FAILED" | "HTTP_ERROR" | "CAPTURE_FAILED" | "CONTEXT_CLOSE_FAILED" | "RUN_ABORTED" | "RUN_DEADLINE_EXCEEDED" | "DISPATCH_TIMEOUT" | null;
+            error_message: string | null;
+        };
+        response: {
+            schema_version: 1;
+            run_uuid: string;
+            status: "queued" | "running" | "complete" | "partial" | "failed" | "deleting";
+            total_snapshots: number;
+            completed_snapshots: number;
+            error_snapshots: number;
+            pending_snapshots: number;
+            completed_at: string | null;
+            error_code: "SNAPSHOT_FAILED" | "NAVIGATION_FAILED" | "HTTP_ERROR" | "CAPTURE_FAILED" | "CONTEXT_CLOSE_FAILED" | "RUN_ABORTED" | "RUN_DEADLINE_EXCEEDED" | "DISPATCH_TIMEOUT" | null;
+        };
+    } | null;
+};
+export type StoredRunManifest = {
+    schema_version: 1;
+    suite: {
+        id: number;
+        name: string;
+    };
+    targets: Array<{
+        id: number;
+        url: string;
+        label: string;
+        object_id: number | null;
+        post_type: string;
+    }>;
+    devices: Array<{
+        id: number;
+        name: string;
+        slug: string;
+        viewport_width: number;
+        viewport_height: number;
+        device_scale_factor: number;
+        is_mobile: boolean;
+        has_touch: boolean;
+        user_agent?: string;
+    }>;
+    settings: {
+        navigation_timeout_ms: number;
+        image_timeout_ms: number;
+        lazy_load: boolean;
+        concurrency: number;
+        pixel_threshold: number;
+        review_threshold: number;
+        changed_threshold: number;
+        ignore_selectors: Array<string>;
+        settings_version: 1;
+    };
+    reference: {
+        mode: "pinned" | "previous" | "specific";
+        run_id: number | null;
+        snapshots: Array<{
+            target_id: number;
+            device_id: number;
+            baseline_snapshot_id: number | null;
+            reason: "no_reference" | "new_target" | "new_device" | "incompatible" | "missing" | "corrupt" | null;
+        }>;
+        versions: {
+            runner: string;
+            playwright: string;
+            chromium: string;
+        } | null;
+    };
+    allowed_origins: Array<string>;
+    queued_deadline_at: string;
+    http_auth_origin: string | null;
 };
 export type SuiteCreateRequest = {
     schema_version: 1;

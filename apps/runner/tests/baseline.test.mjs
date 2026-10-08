@@ -143,3 +143,42 @@ test('Snapshot・画像の欠損、PNG破損、JSONと画像の矛盾を区別�
   await f.save();
   assert.equal((await f.inspect()).compatibility.state, 'RESULT_INVALID');
 });
+
+test('製品Baselineは撮影条件だけを照合し、閾値・表示名・画像寸法を互換性から除外する', async () => {
+  const { productCaptureCompatible, productVersionsCompatible } = await import('../dist/jobs/baseline.js');
+  const previous = { ...structuredClone(manifest), schema_version: 1 };
+  previous.settings.settings_version = 1;
+  const current = structuredClone(previous);
+  current.targets[0].label = '新ラベル';
+  current.devices[0].name = '新しい名前';
+  current.devices[0].slug = 'new-slug';
+  current.settings.pixel_threshold = 0.8;
+  current.settings.review_threshold = 0.2;
+  current.settings.changed_threshold = 0.4;
+  current.settings.concurrency = 4;
+  assert.equal(productCaptureCompatible(previous, current, 1, 1), true);
+  for (const key of ['viewport_width', 'viewport_height', 'device_scale_factor', 'is_mobile', 'has_touch', 'user_agent']) {
+    const changed = structuredClone(current);
+    changed.devices[0][key] = typeof changed.devices[0][key] === 'number' ? changed.devices[0][key] + 1 : typeof changed.devices[0][key] === 'boolean' ? !changed.devices[0][key] : 'different';
+    assert.equal(productCaptureCompatible(previous, changed, 1, 1), false, key);
+  }
+  const changedUrl = structuredClone(current);
+  changedUrl.targets[0].url += '?changed=1';
+  assert.equal(productCaptureCompatible(previous, changedUrl, 1, 1), false);
+  for (const key of ['navigation_timeout_ms', 'image_timeout_ms', 'lazy_load', 'settings_version']) {
+    const changed = structuredClone(current);
+    changed.settings[key] = typeof changed.settings[key] === 'boolean' ? !changed.settings[key] : changed.settings[key] + 1;
+    assert.equal(productCaptureCompatible(previous, changed, 1, 1), false, key);
+  }
+  previous.allowed_origins = ['https://example.com', 'https://cdn.example.com'];
+  current.allowed_origins = [...previous.allowed_origins].reverse();
+  previous.settings.ignore_selectors = ['.a', '.b'];
+  current.settings.ignore_selectors = ['.b', '.a', '.b'];
+  assert.equal(productCaptureCompatible(previous, current, 1, 1), true);
+  current.settings.ignore_selectors = ['.a'];
+  assert.equal(productCaptureCompatible(previous, current, 1, 1), false);
+  const tuple = { runner: '0.1.0', playwright: '1.64.0', chromium: '150' };
+  assert.equal(productVersionsCompatible(tuple, tuple), true);
+  assert.equal(productVersionsCompatible(null, tuple), false);
+  for (const key of Object.keys(tuple)) assert.equal(productVersionsCompatible(tuple, { ...tuple, [key]: 'different' }), false);
+});

@@ -315,3 +315,7 @@ DBの検証はWordPress 6.7と既定版、PHP 7.4、InnoDBで行い、MySQL/Mari
 | Secretの保管 | Manifest/履歴に平文Token・Basic認証・Shared Secretを保存しない。サイト設定の保管・Runnerへの安全な受渡しは #4 |
 
 設計採用後は、上記の未決部分が関係する実装へ着手する前に、対応Issueの決定内容を確認する。プロトタイプのSchemaや実装を、この設計が反映済みであるかのように変更しない。
+
+## Issue #30 の製品実装
+
+固定Manifest・Environment、Baseline全モード/利用時Version検査、Runの状態遷移・期限・Complete再送を実装しました。保存形式、内部Tokenの扱い、検証と後続Issueの境界は [runs-and-baselines.md](runs-and-baselines.md) を参照してください。

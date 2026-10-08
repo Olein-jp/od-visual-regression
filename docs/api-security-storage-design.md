@@ -359,3 +359,7 @@ PHP/Dispatcher/Runner・APM・proxyのbody/Authorization/credentialsログを無
 | 秘密ローテーション | Basicの実行中変更をサポートしない。Shared Secret切替は送信を停止し両端を更新。TTL内Token流出はRun限定でも影響があるため秘密基盤/ログ抑制と即時失効を検証する |
 
 Firefox、ログイン後撮影、通知、AI解析は対象外。設計採用前に実装Issueを追加せず、採用と製品の実装完了は分けて管理する。
+
+## Issue #30 の製品実装
+
+固定Manifest・Environment、Baseline全モード/利用時Version検査、Runの状態遷移・期限・Complete再送を実装しました。保存形式、内部Tokenの扱い、検証と後続Issueの境界は [runs-and-baselines.md](runs-and-baselines.md) を参照してください。
