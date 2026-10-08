@@ -381,7 +381,7 @@ final class ODVR_Contract_Validator {
 		foreach ( $tuples as $tuple ) {
 			if ( null !== $tuple ) {
 				foreach ( array( 'runner', 'playwright', 'chromium' ) as $key ) {
-					if ( null !== $tuple->$key && ( '' === trim( $tuple->$key ) || preg_match( '/[\x00-\x1f\x7f]/', $tuple->$key ) ) ) {
+					if ( null !== $tuple->$key && ( ! preg_match( '/[^\s\x{FEFF}]/u', $tuple->$key ) || preg_match( '/[\x00-\x1f\x7f]/', $tuple->$key ) ) ) {
 						return false; }
 				}
 			}
