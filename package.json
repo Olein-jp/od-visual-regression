@@ -2,7 +2,7 @@
   "name": "od-visual-regression",
   "version": "0.1.0",
   "private": true,
-  "description": "OD Visual Regression の最小限の WordPress 開発環境",
+  "description": "OD Visual Regression の WordPress・Runner モノレポ",
   "scripts": {
     "env:start": "wp-env start",
     "env:stop": "wp-env stop",
@@ -11,10 +11,18 @@
     "env:cli": "wp-env run cli --env-cwd=wp-content/plugins/od-visual-regression wp",
     "lint:php": "composer lint",
     "format:php": "composer format",
-    "i18n:pot": "wp-env run cli --env-cwd=wp-content/plugins/od-visual-regression wp i18n make-pot . languages/od-visual-regression.pot --domain=od-visual-regression --exclude=node_modules,vendor",
-    "i18n:mo": "wp-env run cli --env-cwd=wp-content/plugins/od-visual-regression wp i18n make-mo languages"
+    "i18n:pot": "wp-env run cli --env-cwd=wp-content/plugins/od-visual-regression wp i18n make-pot . languages/od-visual-regression.pot --domain=od-visual-regression",
+    "i18n:mo": "wp-env run cli --env-cwd=wp-content/plugins/od-visual-regression wp i18n make-mo languages",
+    "build": "npm run build --workspace=@odvr/shared && npm run build --workspace=@odvr/runner",
+    "test": "npm run build && node --test apps/runner/tests/*.test.mjs",
+    "runner": "node apps/runner/dist/index.js",
+    "schemas:validate": "node scripts/validate-schemas.mjs"
   },
   "devDependencies": {
     "@wordpress/env": "^11.17.0"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

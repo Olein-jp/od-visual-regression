@@ -1,7 +1,9 @@
 {
   "$schema": "https://schemas.wp.org/trunk/wp-env.json",
   "phpVersion": "7.4",
-  "plugins": ["."],
+  "plugins": [
+    "./wordpress/od-visual-regression"
+  ],
   "config": {
     "WP_DEBUG": true,
     "WP_DEBUG_LOG": true,

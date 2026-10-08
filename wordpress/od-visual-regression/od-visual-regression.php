@@ -26,11 +26,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @return void
  */
-function od_visual_regression_load_textdomain() {
+function odvr_load_textdomain() {
 	load_plugin_textdomain(
 		'od-visual-regression',
 		false,
 		dirname( plugin_basename( __FILE__ ) ) . '/languages'
 	);
 }
-add_action( 'init', 'od_visual_regression_load_textdomain' );
+add_action( 'init', 'odvr_load_textdomain' );

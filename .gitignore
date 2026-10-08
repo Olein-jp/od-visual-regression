@@ -1,4 +1,4 @@
-/node_modules/
+node_modules/
 /vendor/
 /.wp-env.override.json
 /.phpcs-cache
@@ -6,3 +6,5 @@
 /build/
 *.log
 .DS_Store
+**/dist/
+/artifacts/
