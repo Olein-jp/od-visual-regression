@@ -6,7 +6,7 @@
 
 RunnerはローカルのManifestとPNGを使って撮影・比較できるが、WordPressのDB・Repository・Run管理は未実装。`packages/shared/src/index.ts` はDevice・撮影設定・差分判定を定義しており、現在のManifestはプロトタイプ専用である。
 
-Issue #1のPR #15には初期化・管理権限・無効化時のデータ保持がある。2026年10月8日の確認時点では未マージであり、DB実装はその反映後に着手する。設計文書はmainから独立して作成する。
+mainにはIssue #1のPR #15による初期化・管理権限・無効化時のデータ保持が実装済み。今回の文書はその基盤を前提とし、DB導入や通常実行へのコード変更は含めない。
 
 - WordPressに5つの専用テーブルを持ち、画像はWordPressの非公開Storageへ保存する。第6の関連テーブルは追加しない。
 - Suiteは編集可能な設定、Runは開始時の設定を固定した履歴。Manifest生成で現在のSuite・Target・Device・投稿から情報を再取得しない。
