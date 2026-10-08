@@ -21,3 +21,7 @@ CIはTypeScriptの型検査・ビルド、Schema検証、Nodeの単体テスト�
 2026年10月8日、Node.js 20.19.2・npm 10.8.2・Playwright 1.64.0の環境で、ビルド・Schema検証・12件のテスト・PHP構文検査・WPCSが成功しました。ChromiumのテストはmacOSの実行制限外で実施しました。公開サンプルページの撮影とBaseline比較も成功し、差分率0・UNCHANGED、PNGと差分PNGの保存を確認しています。
 
 wp-envの設定は更新しましたが、停止中だったWordPress環境の起動・マウント反映は今回検証していません。Cloud Run、WordPressへのアップロード、管理画面からの実行は未検証・未実装です。
+
+## DB・Run・Baseline・Retentionの設計
+
+Issue #2の設計案は [data-lifecycle-design.md](data-lifecycle-design.md) にまとめています。5テーブル、Run開始時のManifest固定、Baseline選択、再送時の集計、Retentionと削除、移行・Multisite方針、5段階の実装順序を定義しています。設計の採用と製品への実装は別であり、DB・Schema・APIはまだ変更していません。
