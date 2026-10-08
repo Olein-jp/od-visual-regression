@@ -2,6 +2,8 @@
 
 Issue #5の設計成果物。根拠は[仕様v1.1](specification-v1.1.md) §61〜62・§68〜70、秘密の契約は[Issue #4の設計](api-security-storage-design.md)。本書は採用候補であり、実装済みの防御を示さない。今回は設計文書のみ変更する。WordPressが管理・保存、Dispatcherが受付・起動、Runnerが撮影・比較を担当する責務を維持する。
 
+#34で用途別policyと共通HTTP transportを実装した。入口・予算・検証範囲は [pinned-http-transport.md](pinned-http-transport.md) を参照する。ブラウザ適用とクラウド経路の実測は後続Issueであり、以下の設計当時の記述と区別する。
+
 ## 現状と調査範囲
 
 | 対象 | 現状と不足 |

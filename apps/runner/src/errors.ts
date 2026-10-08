@@ -7,6 +7,8 @@ const messages: Record<SnapshotErrorCode, string> = {
   ORIGIN_BLOCKED: '許可されないOriginです', IP_BLOCKED: '非公開IPへのアクセスは禁止です',
   REDIRECT_BLOCKED: 'リダイレクトは禁止です', URL_BLOCKED: '許可されないURL形式です',
   NETWORK_ERROR: '通信に失敗しました', RESOURCE_BLOCKED: '取得できないリソースがあります',
+  NETWORK_LIMIT_EXCEEDED: '通信量または要求数の上限を超えました', NETWORK_TIMEOUT: '通信の期限を超えました',
+  CONNECTION_MISMATCH: '検査済み接続先と実際の接続先が一致しません', REQUEST_ABORTED: '通信が中止されました',
   FILE_SAVE_FAILED: '画像ファイルの保存に失敗しました', BROWSER_ERROR: 'Browserの処理に失敗しました',
   CONTEXT_CLOSE_FAILED: 'Browser Contextの終了に失敗しました', SNAPSHOT_FAILED: 'Snapshotの処理に失敗しました',
 };

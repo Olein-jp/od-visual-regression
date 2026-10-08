@@ -54,3 +54,7 @@ Snapshot単位で `error_code` と固定の日本語 `error_message` を保存�
 SIGTERM・SIGINTの専用ハンドラーは設けていない。通常のシグナル終了、SIGKILL、プロセスクラッシュ、強制終了では終了処理や結果保存に到達する保証はなく、結果なし・一時ファイル・一部画像のみが残り得る。出力先を新しくして再実行し、残存データは運用側で確認・整理する。
 
 検証: `npm run build` 後に `node --test apps/runner/tests/run-lifecycle.test.mjs apps/runner/tests/errors.test.mjs apps/runner/tests/browser.test.mjs apps/runner/tests/security.test.mjs` を実行する。
+
+## 共通transportの診断
+
+#34でNETWORK_LIMIT_EXCEEDED（通信量/要求数/接続数）、NETWORK_TIMEOUT（通信期限）、CONNECTION_MISMATCH（実socketの宛先不一致）、REQUEST_ABORTED（明示中止）を追加した。入力URL・ヘッダー・本文・秘密はエラーへコピーしない。詳しくは [pinned-http-transport.md](pinned-http-transport.md) を参照。
