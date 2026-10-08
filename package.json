@@ -4,6 +4,8 @@
   "private": true,
   "description": "OD Visual Regression の WordPress・Runner モノレポ",
   "scripts": {
+    "build:plugin": "bash scripts/build-plugin.sh",
+    "test:plugin-build": "python3 -m unittest discover -s scripts/tests -p 'test_build_plugin.py'",
     "env:start": "wp-env start",
     "env:stop": "wp-env stop",
     "env:status": "wp-env status",

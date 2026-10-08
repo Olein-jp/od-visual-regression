@@ -1,0 +1,48 @@
+name: Plugin Build
+
+on:
+  push:
+    paths:
+      - 'wordpress/**'
+      - 'scripts/build-plugin.*'
+      - 'scripts/tests/test_build_plugin.py'
+      - '.github/workflows/plugin-build.yml'
+      - 'package.json'
+    tags:
+      - 'plugin-v*'
+  pull_request:
+    paths:
+      - 'wordpress/**'
+      - 'scripts/build-plugin.*'
+      - 'scripts/tests/test_build_plugin.py'
+      - '.github/workflows/plugin-build.yml'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 配布ビルドの検証
+        run: python3 -m unittest discover -s scripts/tests -p 'test_build_plugin.py'
+      - name: プラグイン ZIP の生成
+        env:
+          PLUGIN_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          if [ -n "$PLUGIN_TAG" ]; then
+            bash scripts/build-plugin.sh --tag "$PLUGIN_TAG"
+          else
+            bash scripts/build-plugin.sh
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: od-visual-regression-plugin
+          path: build/od-visual-regression.zip
+          if-no-files-found: error
