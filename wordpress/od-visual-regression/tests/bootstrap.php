@@ -60,6 +60,7 @@ function odvr_test_bootstrap() {
 	$image_path     = $test_directory . '/snapshot.png';
 
 	try {
+		odvr_test_assert( true === ODVR_DB::writable() && true === ODVR_DB::diagnose(), '有効化済みDBのVersion・5テーブル・索引を確認する' );
 		odvr_test_assert( $was_active, '有効化済みのプラグインを検証する' );
 		odvr_test_assert( WP_Filesystem(), '検証用ファイルの操作を初期化できる' );
 		odvr_test_assert( ! $uploads['error'], 'Uploadsの保存先を取得できる' );

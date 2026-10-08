@@ -2,6 +2,8 @@
 
 対象は [Issue #2](https://github.com/Olein-jp/od-visual-regression/issues/2)、根拠は [仕様書v1.1](specification-v1.1.md) の§14〜19・§27〜34・§44・§73。これは実装前の設計案であり、採用はこの文書のPRへの合意で確定する。製品コード・JSON Schema・クラウド設定は変更しない。
 
+DB導入・更新・診断と初期Device（#27）の実装内容は [database.md](database.md) を参照する。以下の設計当時の記述と、RepositoryやRun/Retentionの実装状況は区別する。
+
 ## 現状と基本方針
 
 RunnerはローカルのManifestとPNGを使って撮影・比較できるが、WordPressのDB・Repository・Run管理は未実装。`packages/shared/src/index.ts` はDevice・撮影設定・差分判定を定義しており、現在のManifestはプロトタイプ専用である。
@@ -240,7 +242,8 @@ Suiteの削除操作はMVPではarchivedへの変更とし、実行中Runがあ�
 DB構造のVersionはプラグインVersionと分け、サイトの `odvr_db_version` に保持する。初回は設計採用後の最初のDB実装でVersion 1を定義する。初期化の入口は有効化と `plugins_loaded` 時のVersion比較。[更新時にもVersion検査が必要であることは公式ガイドに従う](https://developer.wordpress.org/plugins/creating-tables-with-plugins/#adding-an-upgrade-function)。
 
 - 初回は5テーブルのCREATE定義に `ENGINE=InnoDB` を指定して `dbDelta()` に渡す。既存テーブルのEngineが異なる場合は自動変換せず、診断と手動移行を必要とする。SQLは1列1行・PRIMARY KEYの書式等のdbDelta要件に合わせる。返却メッセージだけを成功証明にせず、実テーブル・型・一意キー・InnoDBを検査する。[dbDeltaの公式リファレンス](https://developer.wordpress.org/reference/functions/dbdelta/)
-- マイグレーションの排他はサイト単位の非autoload option `odvr_db_upgrade_lock` とowner UUID・有効期限で管理する。`add_option`による初回獲得後、期限切れの再取得・解除はowner/期限を条件にした原子的な比較更新で行う。Optionsのキャッシュも無効化する。古いownerが新しいlockを解除してはいけない。移行中は通常のRun書込・削除を停止し、長い移行はleaseを更新する。ownerを失った処理は次のDDL/DMLステップへ進まない。
+- #27の実装検証でWordPressのadd_optionは重複時UPDATEを持つと確認したため、初回取得に限りINSERT IGNOREを採用する。古いnotoptionsキャッシュ下でも先行ownerを上書きしない。
+- マイグレーションの排他はサイト単位の非autoload option `odvr_db_upgrade_lock` とowner UUID・有効期限で管理する。`INSERT IGNORE`による初回獲得後、期限切れの再取得・解除はowner/期限を条件にした原子的な比較更新で行う。Optionsのキャッシュも無効化する。古いownerが新しいlockを解除してはいけない。移行中は通常のRun書込・削除を停止し、長い移行はleaseを更新する。ownerを失った処理は次のDDL/DMLステップへ進まない。
 - DDLとDMLは同じ原子的な処理と見なさない。構造の追加・変更とデータの補完をVersion別に冪等化し、中断・再実行を許可する。DDLをRunのDMLトランザクションへ混ぜない。
 - 成功検証後だけVersionを進める。失敗時は旧Version、診断、途中のデータを残し、Run書込と削除を停止する。再試行は既存列・索引・初期Deviceを再利用する。
 - Deviceの初期投入はslugの存在検査で重複を防ぐ。将来の列削除・縮小・索引変更はdbDelta任せにせず、バックアップ・明示マイグレーション・検証を必要とする。

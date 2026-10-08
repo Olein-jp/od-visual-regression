@@ -46,9 +46,39 @@ final class ODVR_Plugin {
 			return;
 		}
 
+		ODVR_DB::upgrade();
 		add_action( 'init', array( $this, 'load_textdomain' ) );
+		add_action( 'admin_notices', array( $this, 'database_notice' ) );
+		add_filter( 'wpmu_drop_tables', array( $this, 'site_tables' ), 10, 2 );
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
 		$this->initialized = true;
+	}
+
+	/**
+	 * 書込できないDB状態を管理者へ定型表示する。
+	 *
+	 * @return void
+	 */
+	public function database_notice() {
+		if ( ODVR_Capabilities::can_manage() && is_wp_error( ODVR_DB::writable() ) ) {
+			echo '<div class="notice notice-error"><p>' . esc_html__( 'OD Visual RegressionのDBを利用できません。導入状態を確認してください。', 'od-visual-regression' ) . '</p></div>';
+		}
+	}
+
+	/**
+	 * WordPressによるサイト完全削除へ、そのサイトの5テーブルを追加する。
+	 *
+	 * @param array $tables 削除対象.
+	 * @param int   $site_id 完全削除するサイト.
+	 * @return array 削除対象.
+	 */
+	public function site_tables( $tables, $site_id ) {
+		if ( get_current_blog_id() === (int) $site_id ) {
+			foreach ( ODVR_DB_Schema::definitions() as $suffix => $definition ) {
+				$tables[] = ODVR_DB::table( $suffix );
+			}
+		}
+		return array_values( array_unique( $tables ) );
 	}
 
 	/**
