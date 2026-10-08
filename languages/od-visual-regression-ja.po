@@ -1,0 +1,15 @@
+# Copyright (C) 2026 Koji Kuno
+# このファイルは GPL-2.0-or-later で配布します。
+msgid ""
+msgstr ""
+"Project-Id-Version: OD Visual Regression 0.1.0\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Domain: od-visual-regression\n"
+
+#. プラグイン名の日本語翻訳例。
+msgid "OD Visual Regression"
+msgstr "OD ビジュアルリグレッション"

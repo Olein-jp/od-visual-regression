@@ -1,0 +1,20 @@
+{
+  "name": "od-visual-regression",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OD Visual Regression の最小限の WordPress 開発環境",
+  "scripts": {
+    "env:start": "wp-env start",
+    "env:stop": "wp-env stop",
+    "env:status": "wp-env status",
+    "env:logs": "wp-env logs",
+    "env:cli": "wp-env run cli --env-cwd=wp-content/plugins/od-visual-regression wp",
+    "lint:php": "composer lint",
+    "format:php": "composer format",
+    "i18n:pot": "wp-env run cli --env-cwd=wp-content/plugins/od-visual-regression wp i18n make-pot . languages/od-visual-regression.pot --domain=od-visual-regression --exclude=node_modules,vendor",
+    "i18n:mo": "wp-env run cli --env-cwd=wp-content/plugins/od-visual-regression wp i18n make-mo languages"
+  },
+  "devDependencies": {
+    "@wordpress/env": "^11.17.0"
+  }
+}
