@@ -24,6 +24,10 @@ Issue #2の設計案は [data-lifecycle-design.md](data-lifecycle-design.md) に
 
 Issue #4の設計案は [api-security-storage-design.md](api-security-storage-design.md) にまとめています。共通API/Schema/Version、Run Token、Snapshot再送、非公開Storageと画像配信、Basic認証の秘密受渡し、5段階の実装順序を定義しています。設計採用後に実装Issueへ分割する段階であり、製品のAPI・Schema・Storage・クラウド設定には未反映です。
 
+## Dispatcher・Cloud Run・ローカルDocker・デプロイの設計
+
+Issue #10のPhase 5設計案は [dispatcher-cloud-run-design.md](dispatcher-cloud-run-design.md) にまとめています。HMAC受付・永続台帳による重複防止、起動不明時のExecution照合、期限付きRun Secret、Service/JobのIAMとImage、既存WordPress環境へのローカル接続、path別CI・明示デプロイ・rollback、5項目の実装順序を定義しています。設計採用後に実装Issueへ分割する段階であり、Dispatcher・Docker・クラウドリソースは未実装です。
+
 ## Tests・Runs・Devices・Settingsの管理画面設計
 
 Issue #11のPhase 6設計案は [admin-ui-design.md](admin-ui-design.md) にまとめています。4メニュー、Suite編集とRun開始、管理APIとの対応、Environment/進捗/Baseline/Retention、4モードのViewerと認証Blob、秘密設定・権限・翻訳・キーボード操作・ポーリング・独立JS build、5項目の実装順序を定義しています。接続診断と管理応答の表示フィールドは追加契約として明記しています。設計採用後に実装Issueへ分割する段階であり、製品コード・Schema・クラウドリソースは変更していません。
