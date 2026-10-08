@@ -109,7 +109,13 @@ final class ODVR_DB {
 	 * @return true|WP_Error 結果.
 	 */
 	public static function writable() {
-		if ( '1' !== (string) get_option( 'odvr_db_version', '' ) || get_option( 'odvr_db_error', false ) || get_option( 'odvr_db_upgrade_lock', false ) ) {
+		global $wpdb;
+		$rows  = $wpdb->get_results( $wpdb->prepare( 'SELECT option_name, option_value FROM %i WHERE option_name IN (%s, %s, %s)', $wpdb->options, 'odvr_db_version', 'odvr_db_error', 'odvr_db_upgrade_lock' ), ARRAY_A );
+		if ( ! is_array( $rows ) || $wpdb->last_error ) {
+			return self::error( 'odvr_database_not_ready' );
+		}
+		$state = array_column( $rows, 'option_value', 'option_name' );
+		if ( '1' !== (string) ( $state['odvr_db_version'] ?? '' ) || isset( $state['odvr_db_error'] ) || isset( $state['odvr_db_upgrade_lock'] ) ) {
 			return self::error( 'odvr_database_not_ready' );
 		}
 		return true;
@@ -337,7 +343,9 @@ final class ODVR_DB {
 			'expires' => time() + self::LEASE_SECONDS,
 		);
 		$encoded = wp_json_encode( $lease );
-		if ( add_option( 'odvr_db_upgrade_lock', $encoded, '', false ) ) {
+		// add_optionは重複時のUPDATEがあるため、古いnotoptionsキャッシュ下でlockを上書きし得る.
+		if ( 1 === $wpdb->query( $wpdb->prepare( 'INSERT IGNORE INTO %i (option_name, option_value, autoload) VALUES (%s, %s, %s)', $wpdb->options, 'odvr_db_upgrade_lock', $encoded, 'no' ) ) ) {
+			self::invalidate_lock_cache();
 			return $lease;
 		}
 		$old      = $wpdb->get_var( $wpdb->prepare( 'SELECT option_value FROM %i WHERE option_name = %s', $wpdb->options, 'odvr_db_upgrade_lock' ) );

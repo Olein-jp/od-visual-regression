@@ -15,7 +15,7 @@ Issue #27で、[データライフサイクル設計](data-lifecycle-design.md)�
 
 ## 排他・再実行・復旧
 
-odvr_db_upgrade_lockは非autoload optionで、owner UUIDと120秒のleaseを持つ。add_optionで取得し、期限切れ再取得・延長・解除はDBの現在値に対するCASを使う。DDL/DMLの各段階前に所有を確認し、ownerを失った処理は次の更新やVersion確定へ進まない。古いownerは新ownerのlockを消さない。Optionsキャッシュも無効化する。
+odvr_db_upgrade_lockは非autoload optionで、owner UUIDと120秒のleaseを持つ。初回はINSERT IGNOREで既存ownerを上書きせず取得し、期限切れ再取得・延長・解除はDBの現在値に対するCASを使う。DDL/DMLの各段階前に所有を確認し、ownerを失った処理は次の更新やVersion確定へ進まない。古いownerは新ownerのlockを消さない。Optionsキャッシュも無効化する。add_optionはWordPressで重複時UPDATEを実行するため、このlockの取得では使用しない。書込可否も現在のVersion・診断・lockをDBから直接取得し、notoptionsの古いキャッシュで移行中の書込を許可しない。
 
 Version 0または未導入から、dbDeltaによる冪等DDL・実構造診断・初期Device補完を行い、成功後にVersion 1を保存する。Deviceの初期投入はトランザクション内で行い、slugが既存なら値を変更しない。再有効化とVersion一致時の診断では初期投入を繰り返さない。DDLとDevice投入は別の段階であり、一体のトランザクションとは扱わない。
 

@@ -34,13 +34,25 @@ function odvr_db_assert( $condition, $message ) {
  * @return string SQL.
  */
 function odvr_db_test_query( $sql ) {
-	global $wpdb, $odvr_db_test_failure, $odvr_db_test_ddl, $odvr_db_test_hijack;
+	global $wpdb, $odvr_db_test_failure, $odvr_db_test_ddl, $odvr_db_test_hijack, $odvr_db_test_race;
 	if ( preg_match( '/^(CREATE TABLE|ALTER TABLE|SHOW FULL COLUMNS)/i', $sql ) ) {
 		++$odvr_db_test_ddl;
 	}
 	if ( $odvr_db_test_hijack && false !== strpos( $sql, 'CREATE TABLE ' . ODVR_DB::table( 'devices' ) ) ) {
 		update_option( 'odvr_db_upgrade_lock', $odvr_db_test_hijack, false );
 		$odvr_db_test_hijack = '';
+	}
+	if ( $odvr_db_test_race && 0 === strpos( $sql, 'INSERT IGNORE INTO' ) && false !== strpos( $sql, 'odvr_db_upgrade_lock' ) ) {
+		$race              = $odvr_db_test_race;
+		$odvr_db_test_race = '';
+		$wpdb->insert(
+			$wpdb->options,
+			array(
+				'option_name'  => 'odvr_db_upgrade_lock',
+				'option_value' => $race,
+				'autoload'     => 'no',
+			)
+		);
 	}
 	if ( $odvr_db_test_failure && false !== strpos( $sql, $odvr_db_test_failure ) ) {
 		return 'SELECT odvr_test_missing_column FROM odvr_test_missing_table';
@@ -72,7 +84,7 @@ function odvr_db_test_reset() {
  * @throws RuntimeException 検証失敗.
  */
 function odvr_test_database() {
-	global $wpdb, $odvr_db_test_failure, $odvr_db_test_ddl, $odvr_db_test_hijack;
+	global $wpdb, $odvr_db_test_failure, $odvr_db_test_ddl, $odvr_db_test_hijack, $odvr_db_test_race;
 	$original = $wpdb;
 	$prefix   = $wpdb->prefix . 'odvrtest_' . substr( str_replace( '-', '', wp_generate_uuid4() ), 0, 12 ) . '_';
 	$wpdb     = new wpdb( DB_USER, DB_PASSWORD, DB_NAME, DB_HOST );
@@ -82,6 +94,7 @@ function odvr_test_database() {
 	wp_cache_flush();
 	$odvr_db_test_failure = '';
 	$odvr_db_test_hijack  = '';
+	$odvr_db_test_race    = '';
 	$odvr_db_test_ddl     = 0;
 	add_filter( 'query', 'odvr_db_test_query' );
 	try {
@@ -190,6 +203,17 @@ function odvr_test_database() {
 		);
 		odvr_db_assert( true === ODVR_DB::upgrade() && false === get_option( 'odvr_db_upgrade_lock', false ), '期限切れleaseをCASで再取得し自分のleaseだけを解除する' );
 		odvr_db_test_reset();
+		$race_owner = wp_json_encode(
+			array(
+				'owner'   => wp_generate_uuid4(),
+				'expires' => time() + 120,
+			)
+		);
+		get_option( 'odvr_db_upgrade_lock', false );
+		$odvr_db_test_race = $race_owner;
+		odvr_db_assert( is_wp_error( ODVR_DB::upgrade() ) && get_option( 'odvr_db_upgrade_lock' ) === $race_owner, '古いnotoptionsキャッシュと同時取得でも先行ownerを上書きしない' );
+		odvr_db_assert( is_wp_error( ODVR_DB::writable() ), '書込可否はキャッシュではなく現在のlockを検査する' );
+		odvr_db_test_reset();
 		$replacement         = wp_json_encode(
 			array(
 				'owner'   => wp_generate_uuid4(),
@@ -201,6 +225,7 @@ function odvr_test_database() {
 		odvr_db_assert( is_wp_error( $lost_result ) && false === get_option( 'odvr_db_version', false ), 'owner喪失後は次のDDLやVersion確定へ進まない' );
 		odvr_db_assert( get_option( 'odvr_db_upgrade_lock' ) === $replacement, '古いownerが新しいownerのleaseを解除しない' );
 	} finally {
+		$odvr_db_test_race    = '';
 		$odvr_db_test_hijack  = '';
 		$odvr_db_test_failure = '';
 		remove_filter( 'query', 'odvr_db_test_query' );
