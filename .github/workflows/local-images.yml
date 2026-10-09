@@ -2,17 +2,23 @@ name: Local Images
 on:
   push:
   pull_request:
+permissions:
+  contents: read
 jobs:
+  changes:
+    uses: ./.github/workflows/paths.yml
   local-integration:
+    needs: changes
+    if: needs.changes.outputs.images == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: npm
-      - uses: docker/setup-docker-action@v5
+      - uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5
         with:
           version: v29.3.0
           set-host: true
@@ -25,3 +31,12 @@ jobs:
       - run: npm run test:local
       - if: always() && steps.wpenv.outcome == 'success'
         run: npm run env:stop
+  images-result:
+    if: always()
+    needs: [changes, local-integration]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Image検証の結果を集約
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: node -e 'const jobs=JSON.parse(process.env.RESULTS);if(jobs.changes.result!=="success" || Object.values(jobs).some(job=>!["success","skipped"].includes(job.result)))process.exit(1)'
