@@ -1,6 +1,6 @@
 # Cloud Run 基盤の準備と実機検証
 
-[Issue #39](https://github.com/Olein-jp/od-visual-regression/issues/39) の準備段階。現時点では **未完了**。構築計画の生成とローカルでの定義検査を追加し、クラウド資源の作成・公開・実測は行っていない。Service/Job/Scheduler の構築、WIF による明示 release/rollback、既存 CI の path 別判定も後続作業として残る。計画だけを根拠に Issue を閉じない。
+[Issue #39](https://github.com/Olein-jp/od-visual-regression/issues/39) の準備段階。現時点では **未完了**。構築計画の生成とローカルでの定義検査を追加し、クラウド資源の作成・公開・実測は行っていない。Service/Job/Scheduler の構築、WIF による明示 release/rollbackは後続作業として残る。計画だけを根拠に Issue を閉じない。
 
 ## 環境設定と計画
 
@@ -71,3 +71,7 @@ WIF provider は実際に確認した GitHub の repository ID `1409590981`、ow
 期限試験を省くため製品の90分期限を短縮しない。実 retry は応答喪失などの回復可能な fixture 障害を検証用 WordPress 側に一時注入し、同 Execution の Cloud Run task attempt と台帳で確認する。製品 Job に任意 command/env override を渡して別試験入口にしない。
 
 終了時は受付を止め、Scheduler を pause、終端 Execution と Run Secret 削除を照合し、所有ラベルを確認した試験資源だけを整理する。Firestore の削除保護は運用者が明示解除するまで維持する。staging project に他用途の資源がないことを確認してから撤去対象を決め、production の資源を削除しない。subnet は Cloud Run の IP 解放待ちで削除に1〜2時間かかる場合がある。[Direct VPC の IP 解放](https://docs.cloud.google.com/run/docs/configuring/vpc-direct-vpc#ip-address-allocation)を踏まえ、NAT の残存・課金を含めて後日確認する。
+
+## 通常 CI の変更範囲判定
+
+Runner の変更は Runner と、それを直接利用する Dispatcher およびローカル結合を検証する。Dispatcher の変更は Dispatcher とローカル結合、WordPress の変更は WordPress・配布 ZIP とローカル結合を検証する。共通契約・依存定義・infra・workflow・未知パスは全検証する。削除・移動元を含め、差分を取得できない場合も全検証する。docs だけの変更は製品 build を省略し、常時実行する結果集約で失敗・中断を検出する。クラウド資源の作成・デプロイは通常 CI に含めない。

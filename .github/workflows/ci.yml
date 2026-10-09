@@ -2,12 +2,18 @@ name: CI
 on:
   push:
   pull_request:
+permissions:
+  contents: read
 jobs:
+  changes:
+    uses: ./.github/workflows/paths.yml
   runner:
+    needs: changes
+    if: needs.changes.outputs.runner == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: npm
@@ -15,12 +21,14 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run schemas:validate
       - run: npm run test:contracts
-      - run: npm test
+      - run: npm run build && node --test apps/runner/tests/*.test.mjs
   dispatcher:
+    needs: changes
+    if: needs.changes.outputs.dispatcher == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: npm
@@ -28,20 +36,22 @@ jobs:
       - run: npm run build
       - run: npm run test:dispatcher
   wordpress:
+    needs: changes
+    if: needs.changes.outputs.wordpress == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         wordpress: ['latest', '6.7']
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea # v2
         with:
           php-version: '7.4'
           tools: composer:v2
       - run: composer install --no-interaction --prefer-dist
       - run: find wordpress -name '*.php' -print0 | xargs -0 -n1 php -l
       - run: composer lint
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: npm
@@ -67,3 +77,12 @@ jobs:
           npx wp-env run tests-cli bash -lc 'wp core multisite-convert --title=ODVR-test --quiet && wp plugin activate od-visual-regression --quiet && wp eval-file wp-content/plugins/od-visual-regression/tests/database-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/repositories.php && wp eval-file wp-content/plugins/od-visual-regression/tests/storage-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/runs-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/retention.php && wp eval-file wp-content/plugins/od-visual-regression/tests/uninstall-multisite.php && wp eval-file wp-content/plugins/od-visual-regression/tests/admin-api.php && wp eval-file wp-content/plugins/od-visual-regression/tests/runner-ingress.php'
       - if: always()
         run: npm run env:stop
+  ci-result:
+    if: always()
+    needs: [changes, runner, dispatcher, wordpress]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 選択した検証の結果を集約
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: node -e 'const jobs=JSON.parse(process.env.RESULTS);if(jobs.changes.result!=="success" || Object.values(jobs).some(job=>!["success","skipped"].includes(job.result)))process.exit(1)'
