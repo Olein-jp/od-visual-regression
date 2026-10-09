@@ -1,0 +1,20 @@
+name: Local Images
+on:
+  push:
+  pull_request:
+jobs:
+  local-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run images:build
+      - run: npm run env:start
+      - run: npm run test:local
+      - if: always()
+        run: npm run env:stop

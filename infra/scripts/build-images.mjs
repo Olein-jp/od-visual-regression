@@ -1,0 +1,9 @@
+import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFile,mkdir,writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const directory=resolve('.odvr-local');await mkdir(directory,{recursive:true,mode:0o700});
+function command(args){return new Promise((resolveResult,reject)=>{let output='';const child=spawn(args[0],args.slice(1),{stdio:['ignore','pipe','inherit']});child.stdout.on('data',chunk=>{output+=chunk;process.stdout.write(chunk);});child.on('error',reject);child.on('exit',code=>code===0 ? resolveResult(output.trim()):reject(new Error('Imageの作成・検証に失敗しました。')));});}
+const revision=await command(['git','rev-parse','HEAD']);const lock=createHash('sha256').update(await readFile('package-lock.json')).digest('hex');const images={};
+for(const component of ['runner','dispatcher']){const tag='odvr/'+component+':local';const metadata=directory+'/'+component+'-build.json';await command(['docker','buildx','build','--platform','linux/amd64','--provenance=false','--load','--file','apps/'+component+'/Dockerfile','--tag',tag,'--metadata-file',metadata,'--build-arg','GIT_REVISION='+revision,'--build-arg','LOCK_SHA256='+lock,'.']);const value=JSON.parse(await readFile(metadata,'utf8'));const digest=value['containerimage.digest'];if(!/^sha256:[a-f0-9]{64}$/.test(digest))throw new Error('Image digestを確認してください。');images[component]='odvr/'+component+'@'+digest;await command(['docker','run','--rm','--platform','linux/amd64','--read-only','--tmpfs','/tmp','--shm-size','256m','--entrypoint','node',images[component],'infra/local/smoke.mjs']);}
+await writeFile(directory+'/images.json',JSON.stringify({schema_version:1,platform:'linux/amd64',revision,lock_sha256:lock,images},null,2)+'\n',{mode:0o600});process.stdout.write('両Imageの作成・版一致・非root smokeを確認しました。\n');

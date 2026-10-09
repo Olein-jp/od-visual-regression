@@ -1,0 +1,7 @@
+import { readFile,access } from 'node:fs/promises';
+import { imageVersions } from './check.mjs';
+if(process.getuid()===0 || process.platform!=='linux' || process.arch!=='x64')throw new Error('Imageの実行条件を確認してください。');
+const component=JSON.parse(await readFile('/app/component.json','utf8')).component;
+for(const path of ['/app/wordpress','/app/apps/runner/tests','/app/node_modules/typescript','/app/node_modules/@wordpress/env','/var/run/docker.sock']){try{await access(path);throw new Error('不要物が含まれています。');}catch(error){if(error.code!=='ENOENT')throw error;}}
+if(component==='runner'){await import('../../apps/runner/dist/jobs/product-run.js');const {chromium,installed}=await imageVersions();const browser=await chromium.launch({headless:true});try{if(browser.version()!=='156.0.8078.4')throw new Error('Chromium版が一致しません。');const page=await browser.newPage();await page.setContent('<html><body>ODVR</body></html>');const png=await page.screenshot();if(png.length<100)throw new Error('撮影できません。');process.stdout.write(JSON.stringify({component,playwright:installed,chromium:browser.version(),uid:process.getuid(),arch:process.arch})+'\n');}finally{await browser.close();}}
+else{for(const module of ['server','engine','config','firestore-store','google-jobs','worker-auth','local-jobs'])await import('../../apps/dispatcher/dist/'+module+'.js');process.stdout.write(JSON.stringify({component,uid:process.getuid(),arch:process.arch})+'\n');}

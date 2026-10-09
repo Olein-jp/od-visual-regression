@@ -184,3 +184,7 @@ Dispatcherは新revisionへtrafficを切り替える前にhealth、登録設定�
 ## Issue #37 実装状況
 
 `apps/dispatcher` に raw HMAC HTTP受付、Firestore受付台帳、期限付きSecret、固定Job起動、Operation/Execution照合、認証付き内部workerとcleanupを実装した。具体的な設定・入口・復旧条件と実測範囲は [Dispatcher製品入口](dispatcher-implementation.md) を参照する。通常CIは永続adapter/公式SDK fixtureで検証し、localの有限launcher接続は #38、実Cloud Run/IAMの実測は #39 で行う。
+
+## Issue #38 実装状況
+
+共通linux/amd64 Image、非root実行、固定wp-env bridge、Firestore emulator、tmpfs秘密、有限queue launcherと内部workerを実装した。[起動・停止・fixture・復元・再起動の範囲と制限](local-images.md)を参照する。Cloud実機は #39、MVP全シナリオは #13 で検証する。

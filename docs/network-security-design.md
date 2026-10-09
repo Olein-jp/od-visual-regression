@@ -153,3 +153,7 @@ Cloud Run公開は、上記5段階の実装と検証、#4の認証/Storage契約
 | 先行設計 | #4・§70の秘密適用先変更は採用時に同期。製品のWordPress保存責務、Dispatcher受付、Runner撮影比較は維持 |
 
 今回の検証は指定仕様、既存guard/context/テストと直接依存への設計照合、公式API・クラウド制約の確認、文書リンク・差分検査まで。製品コード、Schema、クラウドリソースを変更せず、製品全テストやクラウド実測は行わない。Firefox、ログイン後撮影、通知、AI解析は対象外。
+
+## Issue #38 実装状況
+
+共通linux/amd64 Image、非root実行、固定wp-env bridge、Firestore emulator、tmpfs秘密、有限queue launcherと内部workerを実装した。[起動・停止・fixture・復元・再起動の範囲と制限](local-images.md)を参照する。Cloud実機は #39、MVP全シナリオは #13 で検証する。
