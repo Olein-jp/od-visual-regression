@@ -2,6 +2,8 @@
 # 既存のWordPress rewriteより前に、このブロックだけを追加する。
 <IfModule mod_rewrite.c>
 RewriteEngine On
+# 専用rewriteはWordPress標準のAuthorization転送規則より前に終了するため、先に保存する。
+RewriteRule ^wp-json/odvr/v1/runner/ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 RewriteRule ^wp-json/odvr/v1/runner/ odvr-runner-gateway/index.php [END]
 </IfModule>
 # END ODVR Runner Gateway
