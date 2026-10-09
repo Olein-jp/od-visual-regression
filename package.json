@@ -30,7 +30,9 @@
     "local:status": "node infra/scripts/local.mjs status",
     "local:stop": "node infra/scripts/local.mjs stop",
     "local:check": "node infra/scripts/local.mjs check",
-    "test:local": "node infra/scripts/test-local.mjs"
+    "test:local": "node infra/scripts/test-local.mjs",
+    "cloud:plan": "node infra/scripts/cloud-plan.mjs",
+    "test:cloud-plan": "node --test infra/cloud/*.test.mjs"
   },
   "devDependencies": {
     "@wordpress/env": "^11.17.0"
