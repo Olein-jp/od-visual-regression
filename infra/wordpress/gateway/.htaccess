@@ -1,6 +1,10 @@
 # CGI/FastCGI用。php_flag/php_valueは使用しない。
 Options -Indexes
 LimitRequestBody 44040192
+<IfModule mod_headers.c>
+# 内部rewrite後、この専用ディレクトリでPHPの自動multipart展開を避ける。
+RequestHeader set Content-Type "application/octet-stream" env=REDIRECT_ODVR_RAW_MULTIPART
+</IfModule>
 <Files ".user.ini">
     Require all denied
 </Files>

@@ -63,6 +63,20 @@ if ( ! is_file( $odvr_bootstrap ) ) {
 	exit;
 }
 
+// 内部rewriteで保存した元の型だけを復元する。HTTP_*の同名ヘッダーは参照しない。
+$odvr_multipart = $_SERVER['REDIRECT_ODVR_RAW_MULTIPART'] ?? $_SERVER['ODVR_RAW_MULTIPART'] ?? null;
+if ( null !== $odvr_multipart ) {
+	if ( 'POST' !== $odvr_method || ! preg_match( $odvr_post, $odvr_uri ) || '/snapshots' !== substr( $odvr_uri, -10 ) ||
+		! is_string( $odvr_multipart ) || strlen( $odvr_multipart ) > 256 ||
+		! preg_match( '/^multipart\/form-data;[^\r\n]+$/iD', $odvr_multipart ) ||
+		'application/octet-stream' !== ( $_SERVER['CONTENT_TYPE'] ?? '' ) ) {
+		http_response_code( 503 );
+		header( 'Cache-Control: private, no-store' );
+		exit;
+	}
+	$_SERVER['CONTENT_TYPE'] = $odvr_multipart;
+}
+
 // 元のURLとBearerを保ち、検査済みのRunner経路だけを既存REST controllerへ渡す。
 $_GET['rest_route'] = substr( $odvr_uri, strlen( '/wp-json' ) );
 define( 'WP_USE_THEMES', false );

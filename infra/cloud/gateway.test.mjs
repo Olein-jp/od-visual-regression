@@ -9,12 +9,12 @@ async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'odvr-gateway-'));
   await cp('infra/wordpress/gateway', join(directory, 'odvr-runner-gateway'), { recursive: true });
   // WordPressを起動したか、受信した固定経路と設定だけをfixtureが返す。
-  await writeFile(join(directory, 'wp-blog-header.php'), '<?php echo json_encode(["booted"=>true,"route"=>$_GET["rest_route"],"themes"=>WP_USE_THEMES,"bearer"=>$_SERVER["HTTP_AUTHORIZATION"]??null]);');
+  await writeFile(join(directory, 'wp-blog-header.php'), '<?php echo json_encode(["booted"=>true,"route"=>$_GET["rest_route"],"themes"=>WP_USE_THEMES,"bearer"=>$_SERVER["HTTP_AUTHORIZATION"]??null,"type"=>$_SERVER["CONTENT_TYPE"]??null]);');
   return {
     directory,
     invoke(uri, method = 'GET', options = {}) {
       const values = { REQUEST_URI: uri, REQUEST_METHOD: method, QUERY_STRING: options.query ?? '',
-        CONTENT_LENGTH: options.length ?? '0', HTTP_AUTHORIZATION: 'Bearer fixture-only' };
+        CONTENT_LENGTH: options.length ?? '0', HTTP_AUTHORIZATION: 'Bearer fixture-only', ...options.server };
       const encoded = Buffer.from(JSON.stringify(values)).toString('base64');
       const php = `$_SERVER=json_decode(base64_decode('${encoded}'),true); $_GET=[]; register_shutdown_function(function(){echo "\\nSTATUS=".(http_response_code() ?: 200);}); require '${directory}/odvr-runner-gateway/index.php';`;
       const result = spawnSync('php', ['-d', `enable_post_data_reading=${options.raw === false ? 'On' : 'Off'}`, '-r', php], { encoding: 'utf8' });
@@ -37,11 +37,27 @@ test('専用入口は元のURL/Bearerを保持して既存WordPress RESTへ渡�
       const result = value.invoke(`${base}/${operation}`);
       assert.equal(result.status, 200);
       assert.deepEqual(result.body, { booted: true, route: `/odvr/v1/runner/runs/${uuid}/${operation}`,
-        themes: false, bearer: 'Bearer fixture-only' });
+        themes: false, bearer: 'Bearer fixture-only', type: null });
     }
     const result = value.invoke('/wp-json/odvr/v1/runner/snapshots/1/baseline');
     assert.equal(result.body.route, '/odvr/v1/runner/snapshots/1/baseline');
     for (const operation of ['snapshots', 'progress', 'complete']) assert.equal(value.invoke(`${base}/${operation}`, 'POST').body.booted, true);
+  } finally { await value.close(); }
+});
+test('画像本文の元の型は内部rewrite変数だけから復元し、HTTPヘッダーの偽装・他経路へ拡張しない', async () => {
+  const value = await fixture();
+  const type = 'multipart/form-data; boundary=fixture';
+  const server = { CONTENT_TYPE: 'application/octet-stream', REDIRECT_ODVR_RAW_MULTIPART: type };
+  try {
+    assert.equal(value.invoke(`${base}/snapshots`, 'POST', { server }).body.type, type);
+    assert.equal(value.invoke(`${base}/snapshots`, 'POST', { server: {
+      CONTENT_TYPE: 'application/octet-stream', HTTP_REDIRECT_ODVR_RAW_MULTIPART: type,
+      HTTP_ODVR_RAW_MULTIPART: type } }).body.type, 'application/octet-stream');
+    for (const [uri, method, overrides] of [[`${base}/complete`, 'POST', server],
+      [`${base}/manifest`, 'GET', server], [`${base}/snapshots`, 'POST', { ...server, CONTENT_TYPE: type }],
+      [`${base}/snapshots`, 'POST', { ...server, REDIRECT_ODVR_RAW_MULTIPART: 'multipart/form-data; fixture\r\nHeader: injected' }],
+      [`${base}/snapshots`, 'POST', { ...server, REDIRECT_ODVR_RAW_MULTIPART: 'multipart/form-data;' + 'x'.repeat(256) }]])
+      assert.deepEqual(value.invoke(uri, method, { server: overrides }), { body: null, status: 503 });
   } finally { await value.close(); }
 });
 test('直接入口・管理API・別method・query・encoded pathはWordPressを起動しない', async () => {

@@ -4,6 +4,10 @@
 RewriteEngine On
 # 専用rewriteはWordPress標準のAuthorization転送規則より前に終了するため、先に保存する。
 RewriteRule ^wp-json/odvr/v1/runner/ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+# CGI/FastCGIの.user.ini適用前にmultipartを消費させない。元の型は内部環境変数だけに保存する。
+RewriteCond %{REQUEST_METHOD} =POST
+RewriteCond %{HTTP:Content-Type} ^multipart/form-data; [NC]
+RewriteRule ^wp-json/odvr/v1/runner/runs/[a-f0-9-]{36}/snapshots$ - [E=ODVR_RAW_MULTIPART:%{HTTP:Content-Type}]
 RewriteRule ^wp-json/odvr/v1/runner/ odvr-runner-gateway/index.php [END]
 </IfModule>
 # END ODVR Runner Gateway
