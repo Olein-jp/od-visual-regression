@@ -34,7 +34,10 @@ if ( 'setup' === $phase ) {
 	$state['suite_id'] = $suite['item']['id']; file_put_contents( $state_file, wp_json_encode( $state ) );
 	odvr_local_request( 'POST', '/suites/' . $state['suite_id'] . '/targets', (object) array( 'schema_version' => 1, 'url' => 'https://wordpress.fixture.test:8443/index.php?odvr_local_fixture=1', 'label' => 'local fixture', 'object_id' => null, 'post_type' => '', 'enabled' => true, 'sort_order' => 0 ) );
 	$diagnosis = odvr_local_request( 'POST', '/settings/connection-test', (object) array( 'schema_version' => 1 ) );
-	if ( 'passed' !== $diagnosis['item']['checks']['dispatcher'] || 'passed' !== $diagnosis['item']['checks']['storage'] || 'passed' !== $diagnosis['item']['checks']['settings'] ) { WP_CLI::error( 'local接続診断が成功しませんでした。' ); }
+	if ( 'passed' !== $diagnosis['item']['checks']['dispatcher'] || 'passed' !== $diagnosis['item']['checks']['storage'] || 'passed' !== $diagnosis['item']['checks']['settings'] ) {
+		$summary = array(); foreach ( array( 'dispatcher', 'storage', 'settings' ) as $key ) { $summary[] = $key . '=' . ( in_array( $diagnosis['item']['checks'][ $key ] ?? '', array( 'passed', 'failed' ), true ) ? $diagnosis['item']['checks'][ $key ] : 'unknown' ); }
+		WP_CLI::error( 'local接続診断が成功しませんでした。 ' . implode( ', ', $summary ) );
+	}
 	$run = odvr_local_request( 'POST', '/suites/' . $state['suite_id'] . '/runs', (object) array( 'schema_version' => 1, 'baseline_mode' => 'previous' ) );
 	$state['run_uuid'] = $run['item']['run_uuid']; file_put_contents( $state_file, wp_json_encode( $state ) );
 	WP_CLI::log( wp_json_encode( array( 'run_uuid' => $state['run_uuid'], 'suite_id' => $state['suite_id'] ) ) );

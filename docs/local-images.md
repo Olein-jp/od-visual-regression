@@ -29,7 +29,7 @@ npm run local:stop
 
 ダミーShared Secret・worker key・TLS鍵・Run Secretは32MiBのtmpfsに置き、秘密ファイルは600、directoryは700とする。秘密はログへ出さない。Firestore emulator・非秘密queueはnamed volumeに保存する。Dispatcher/workerへDocker socketを渡さず、launcherは固定入口だけを実行する。queueの起動markerを先に永続化し、同Executionで初回+retry1の最大2試行、Taskごと30分以内、Secret expiry以内を強制する。中断した2回目から3回目を作らない。終了済み旧digestの履歴は参照できるが、未終了の別digestは起動しない。
 
-fixtureは管理APIで専用Device/Suite/Target/Runを作成し、実署名受付、固定HTTP撮影、raw multipart Upload、Completeを通す。Apacheは元のRunner要求だけで `enable_post_data_reading Off` を有効化し、WordPressへの内部転送後も保持する。Storage保護の運用確認フラグを一時設定し、実canaryの公開control200と非公開領域403/404を接続診断で検査する。TLS検証はダミーCAを信頼し、無効化しない。
+fixtureは管理APIで専用Device/Suite/Target/Runを作成し、実署名受付、固定HTTP撮影、raw multipart Upload、Completeを通す。固定Runner経路のWordPress転送を明示し、既存のパーマリンク設定に依存しない。起動時にはダミーBearerの401とgateway能力を確認してからfixtureを開始する。Apacheは元のRunner要求だけで `enable_post_data_reading Off` を有効化し、WordPressへの内部転送後も保持する。Storage保護の運用確認フラグを一時設定し、実canaryの公開control200と非公開領域403/404を接続診断で検査する。TLS検証はダミーCAを信頼し、無効化しない。
 
 `local:stop` はfixture Runを既存Retentionで削除し、Device/Suite/Target、専用session、変更したoptionを回収する。wp-configは変更前の内容へ戻し、fixture MU-plugin/Apache設定/ダミー秘密だけを削除し、追加したbridge接続だけを外す。ホストに生成したfixture CAと秘密鍵も削除する。実行中Runがあると削除を拒否するため、完了を確認してから停止する。既存wp-envは起動したまま残る。前回の状態がある場合は新しい起動を拒否し、停止による復元を先に行う。
 

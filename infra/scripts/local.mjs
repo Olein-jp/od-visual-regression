@@ -34,6 +34,7 @@ try{
   await copyBytes(state.wordpress,'/var/www/html/wp-content/mu-plugins/odvr-local-fixture.php',await readFile('infra/local/wp-mu.php'),'644');await copyBytes(state.wordpress,'/etc/apache2/conf-enabled/odvr-local-fixture.conf',await readFile('infra/local/wp-apache.conf'),'644');await copyBytes(state.cli,'/tmp/odvr-local-fixture.php',await readFile('infra/local/wp-fixture.php'),'644');
   await command(['docker','exec',state.wordpress,'php','-l','/var/www/html/wp-content/mu-plugins/odvr-local-fixture.php']);await command(['docker','exec',state.cli,'php','-l','/tmp/odvr-local-fixture.php']);
   await command(['docker','exec',state.wordpress,'sh','-c','a2enmod headers >/dev/null && apachectl -t && apachectl -k graceful']);
+  let gatewayReady=false;for(let attempt=0;attempt<20;attempt++){try{await command(['docker','compose','--profile','local','exec','-T','launcher','node','infra/local/probe.mjs'],undefined,environment);gatewayReady=true;break;}catch{await wait(1000);}}if(!gatewayReady)throw new Error('固定Runner gatewayの準備を確認できませんでした。');
   state.ready=true;await save(state);process.stdout.write('固定HTTPS bridge・両Image・emulator・tmpfs・launcher・workerを起動しました。\n');
  }else if(phase==='fixture'){
   const state=await saved();if(!state.ready)throw new Error('local起動を完了してからfixtureを実行してください。');state.fixture=true;await save(state);const result=await fixture(state,'setup');process.stdout.write(result);
