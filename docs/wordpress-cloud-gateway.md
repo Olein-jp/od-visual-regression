@@ -1,6 +1,6 @@
 # CGI/FastCGIでのRunner専用入口
 
-Cloud Run の検証サイトが CGI/FastCGI の共有サーバーを使う場合の、WordPress直下設置用の入口。通常のAPI・ログイン・フォームとPHP設定を分ける。2026年10月9日の staging 接続診断ではプラグイン登録とBearer転送は成功、生multipartは未対応だった。設置後、`.user.ini` の配置修正により生本文対応は available となった。専用rewriteでAuthorizationが失われることを確認し、転送前に保存する規則を追加した。Authorization転送のstaging適用は成功したが、multipartの本文は消失し、JSON/octet-streamは認証拒否へ到達した。実PHP-CGIでも `.user.ini` がOffのまま自動展開される挙動を再現したため、画像POST限定の内部型保存・PHP手前での型切り替え・入口での復元を追加した。この追加修正のstaging適用、認証済み画像保存と通常POSTフォームの実測は未完了。
+Cloud Run の検証サイトが CGI/FastCGI の共有サーバーを使う場合の、WordPress直下設置用の入口。通常のAPI・ログイン・フォームとPHP設定を分ける。2026年10月9日の staging 接続診断ではプラグイン登録とBearer転送は成功、生multipartは未対応だった。設置後、`.user.ini` の配置修正により生本文対応は available となった。専用rewriteでAuthorizationが失われることを確認し、転送前に保存する規則を追加した。Authorization転送のstaging適用は成功したが、multipartの本文は消失し、JSON/octet-streamは認証拒否へ到達した。実PHP-CGIでも `.user.ini` がOffのまま自動展開される挙動を再現したため、画像POST限定の内部型保存・PHP手前での型切り替え・入口での復元を追加した。追加修正のstaging適用後、93バイトのmultipartが本文長検査を通り、ダミーBearerに401、Bearer present/raw availableを返すことを確認した。トップ・REST・ログインGETは200、直接入口404、設定ファイル403も確認した。認証済み画像保存と通常POSTフォームの実測は未完了。
 
 PHP の `enable_post_data_reading` は起動後の `ini_set` では変更できない。CGI/FastCGI は実行する PHP ファイルのディレクトリの `.user.ini` を読むため、専用ディレクトリのPHPへ内部rewriteし、その経路にだけ設定を適用する。[PHP公式の設定仕様](https://www.php.net/manual/en/configuration.file.per-user.php)、[ディレクティブ仕様](https://www.php.net/manual/en/ini.core.php#ini.enable-post-data-reading)を参照する。エックスサーバーの Xアクセラレータ Ver.2 も `.user.ini` を使い、反映に最大5分程度かかる場合がある。[公式の説明](https://www.xserver.ne.jp/manual/man_server_xaccelerator.php)を踏まえた構成だが、すべての契約・サーバーで動作を保証するものではなく、設置後の製品接続診断で確定する。
 
@@ -28,3 +28,5 @@ Authorization転送の修正は、一時的なlocalhostの実Apache/CGIで旧規
 ルートsnippetはPOSTのRunner snapshots経路とmultipart型だけを選び、元の型を内部環境変数へ保存する。専用ディレクトリの `.htaccess` でPHPに渡す直前の型をoctet-streamにし、専用 `index.php` がWordPress起動前に元のmultipart型へ戻す。送信者のHTTP契約・境界・本文・Content-Lengthは維持し、PHPの標準フォーム展開に重複項目を失わせない。`HTTP_ODVR_RAW_MULTIPART` 等のクライアントヘッダーからは復元せず、他経路・method・改行・過大な型・型の不一致を拒否する。mod_headersが適用されない場合は受信を継続できず、公開前に実POST診断で検出する。
 
 一時localhostの実Apache/PHP-CGIで、同じ93バイトのmultipartが旧設定では0バイト/自動展開1項目、修正後は93バイト/自動展開0項目となり、元のmultipart型とBearerが保持されることを確認した。23件の定義/入口試験では、クライアントヘッダー偽装・他経路・型不一致・改行注入も拒否した。stagingでの正常認証による画像保存は別途実測する。
+
+2026年10月9日のstaging再確認ではmanifestと93バイトのmultipart POSTがともに定型の無効認証401へ到達し、本文取得/長さ照合を通過した。画像保存・実Run・実Tokenを作成した試験ではない。Cloud Runの実結合と正常認証によるPNG保存は引き続き未測定とする。
