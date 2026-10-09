@@ -1,0 +1,6 @@
+# CGI/FastCGI用。php_flag/php_valueは使用しない。
+Options -Indexes
+LimitRequestBody 44040192
+<Files ".user.ini">
+    Require all denied
+</Files>

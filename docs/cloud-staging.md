@@ -28,6 +28,8 @@ Issue の検証条件は「クラウド実リソースの新規作成・デプ�
 
 既存本番 WordPress を流用せず、ダミー資格情報の公開 HTTPS staging site を使う。wp-env の RFC1918 接続例外をクラウドへ渡さない。
 
+CGI/FastCGI の共有サーバーで生multipartが未対応の場合は、[Runner専用入口](wordpress-cloud-gateway.md)の設置と実機診断を先に行う。ドメイン全体のフォーム展開設定を無効化しない。
+
 ## 通信と IAM の検証条件
 
 専用 IPv4 subnet を作り、製品 Service/Job は Direct VPC egress **all-traffic** と専用 network tag を必須にする。現在の計画は private/link-local/予約範囲の deny を優先度100、公開 TCP80/443 allow を200、残り deny を300にする。UDP・別 port・VPC 内の別 DNS resolver は許可しない。Cloud Run の既定 resolver が使われる経路は実測し、未検査の resolver へ変更しない。[Direct VPC egress の仕様](https://docs.cloud.google.com/run/docs/configuring/vpc-direct-vpc)では VPC firewall logging に制限があり、ログ不在を拒否の証拠にできない。

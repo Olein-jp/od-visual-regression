@@ -1,0 +1,7 @@
+# BEGIN ODVR Runner Gateway
+# 既存のWordPress rewriteより前に、このブロックだけを追加する。
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule ^wp-json/odvr/v1/runner/ odvr-runner-gateway/index.php [END]
+</IfModule>
+# END ODVR Runner Gateway
