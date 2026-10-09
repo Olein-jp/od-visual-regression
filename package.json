@@ -15,13 +15,15 @@
     "format:php": "composer format",
     "i18n:pot": "wp-env run cli --env-cwd=wp-content/plugins/od-visual-regression wp i18n make-pot . languages/od-visual-regression.pot --domain=od-visual-regression",
     "i18n:mo": "wp-env run cli --env-cwd=wp-content/plugins/od-visual-regression wp i18n make-mo languages",
-    "build": "npm run build --workspace=@odvr/shared && npm run build --workspace=@odvr/runner",
-    "test": "npm run build && node --test apps/runner/tests/*.test.mjs",
+    "build": "npm run build --workspace=@odvr/shared && npm run build --workspace=@odvr/runner && npm run build --workspace=@odvr/dispatcher",
+    "test": "npm run build && node --test apps/runner/tests/*.test.mjs && npm run test:dispatcher",
     "runner": "node apps/runner/dist/index.js",
     "schemas:validate": "node scripts/validate-schemas.mjs && node scripts/generate-contract-types.mjs --check",
     "preenv:start": "node scripts/sync-schemas.mjs",
     "test:contracts": "node --test packages/schemas/tests/*.test.mjs",
-    "runner:job": "node apps/runner/dist/job.js"
+    "runner:job": "node apps/runner/dist/job.js",
+    "test:dispatcher": "node --test apps/dispatcher/tests/*.test.mjs",
+    "dispatcher": "node apps/dispatcher/dist/index.js"
   },
   "devDependencies": {
     "@wordpress/env": "^11.17.0"

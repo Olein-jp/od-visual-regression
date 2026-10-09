@@ -180,3 +180,7 @@ Dispatcherは新revisionへtrafficを切り替える前にhealth、登録設定�
 ## Issue #36 実装状況
 
 製品 Runner の固定 WordPress API client・pending 再開・Upload/Progress/Complete・Job 入口・Run 秘密 adapter を実装した。[設定・終了処理・検証範囲](runner-job.md)を参照する。Dispatcher の非秘密 override には元の Run Secret expiry を `ODVR_TOKEN_EXPIRES_AT` として含め、固定 project 番号・site/UUID から導出した数値 version と照合する。既存プロトタイプ CLI は維持する。実 Dispatcher 起動は #37、wp-env 接続は #38、Cloud 実機は #39 で検証する。
+
+## Issue #37 実装状況
+
+`apps/dispatcher` に raw HMAC HTTP受付、Firestore受付台帳、期限付きSecret、固定Job起動、Operation/Execution照合、認証付き内部workerとcleanupを実装した。具体的な設定・入口・復旧条件と実測範囲は [Dispatcher製品入口](dispatcher-implementation.md) を参照する。通常CIは永続adapter/公式SDK fixtureで検証し、localの有限launcher接続は #38、実Cloud Run/IAMの実測は #39 で行う。
