@@ -2,6 +2,16 @@
 
 [Issue #39](https://github.com/Olein-jp/od-visual-regression/issues/39) の準備段階。現時点では **未完了**。構築計画の生成とローカルでの定義検査を追加し、クラウド資源の作成・公開・実測は行っていない。Service/Job/Scheduler の構築、WIF による明示 release/rollback は後続作業として残る。計画だけを根拠に Issue を閉じない。
 
+## 運用費の前提と構築停止
+
+2026年10月9日に利用者の採用条件を再確認した。Google Cloud採用の前提は「基本的にランニングコストが発生しないこと」。Cloud Runの実行料だけを無料枠に収める説明では構成全体の条件を満たさない。常設Cloud NAT・外部IPv4を含む現在の準備計画は、この前提に適合していないため構築しない。
+
+以前の1〜10米ドルの一時検証費用への承認を、継続費用のある運用構成への承認として扱わない。承認後に実施したのはproject情報の読み取り確認のみで、API有効化・クラウド資源作成・配備は行っていない。現行の `foundation-plan.json` と本文下のNAT前提の手順は再設計前の参考資料で、実行対象ではない。#39とPRは未完了のまま維持する。
+
+見直しでは、常時費用、使用量に応じた費用、無料枠の条件を構成全体で確認する。試用クレジットを継続的な無料運用の根拠にしない。Cloud RunだけでなくRegistry保存/転送、Firestore、Secretの保管数/操作、Scheduler、ログ、撮影先との通信まで対象にする。利用量の基準と残余の課金可能性を示すまで「無料で運用できる」と確定しない。
+
+NATを外すだけで現在の安全要件を満たしたとは扱わない。費用条件に合う候補と、公開通信・private/Metadata・アプリguard迂回に対する制御の差分を設計レビューし、必要な受け入れ条件を更新してから実装・実測する。安全性または費用条件が成立しない候補は採用しない。
+
 ## 環境設定と計画
 
 `infra/environments/staging.example.json` と `production.example.json` を、Git 管理外の `.odvr-cloud/` にコピーする。`null` は未確定値であり、そのままでは計画を生成できない。実 project ID と番号、Run Secret 専用 project ID と番号、region、運用者アカウント、専用 named configuration、整列済み RFC1918 `/16`〜`/26` subnet、検証用 site、費用上限の目安、cleanup 予定日数を設定する。運用者アカウントは構築用で、runtime/build/deploy SA と分ける。
