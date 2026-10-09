@@ -12,7 +12,15 @@
 
 NATを外すだけで現在の安全要件を満たしたとは扱わない。費用条件に合う候補と、公開通信・private/Metadata・アプリguard迂回に対する制御の差分を設計レビューし、必要な受け入れ条件を更新してから実装・実測する。安全性または費用条件が成立しない候補は採用しない。
 
-## 環境設定と計画
+## Issue #57 の設計記録と再開条件（2026-10-10）
+
+[無料枠クラウド設計](free-tier-cloud-design.md)を仕様・費用・上限・経路・後続5項目計画の正本とする。月8Run/6Snapshotの条件付き0円profileは未合意。日本向け等の通信無料条件、共有枠、公開GHCR実配備、NATなしの迂回通信拒否が未確認のため、#57は未解決、#39/PR #56の構築停止を維持する。
+
+`infra/cloud/plan.mjs`は正のbudget_usd、NAT/外部IPv4、Registryを固定し、`deployment.mjs`はall-traffic・同project/region Registry・旧資源値を固定する。今回はコードを変えないため、生成された計画は新設計に適合しない。再開前に#39で無料目標0/有効なquota証明・失効時停止・GHCR digest・private-ranges-only・低資源上限・account原子予約を実装し、未採用/旧設定を計画生成段階から拒否する。
+
+以下は**再設計前の準備コードの説明・検証項目**。NAT/all-traffic/旧registry/timeout等は実行対象外で、現行canary/費用検証は正本の差分に置き換える。旧値のローカルテスト成功は無料構成の採用や実機合格を意味しない。既存IAM/HMAC/期限・rollback・同一digestの責務は維持する。
+
+## 環境設定と計画（旧準備コードの説明）
 
 `infra/environments/staging.example.json` と `production.example.json` を、Git 管理外の `.odvr-cloud/` にコピーする。`null` は未確定値であり、そのままでは計画を生成できない。実 project ID と番号、Run Secret 専用 project ID と番号、region、運用者アカウント、専用 named configuration、整列済み RFC1918 `/16`〜`/26` subnet、検証用 site、費用上限の目安、cleanup 予定日数を設定する。運用者アカウントは構築用で、runtime/build/deploy SA と分ける。
 

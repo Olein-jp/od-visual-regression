@@ -4,6 +4,14 @@ Issue #5の設計成果物。根拠は[仕様v1.1](specification-v1.1.md) §61�
 
 #34で用途別policyと共通HTTP transportを実装した。入口・予算・検証範囲は [pinned-http-transport.md](pinned-http-transport.md) を参照する。ブラウザ適用とクラウド経路の実測は後続Issueであり、以下の設計当時の記述と区別する。
 
+## Issue #57 の経路見直し（2026-10-10）
+
+[無料枠クラウド設計](free-tier-cloud-design.md)が費用条件・経路比較・採否と実機canaryの正本。旧all-traffic＋NATを標準から除外し、Direct VPC private-ranges-only＋private宛denyを候補とする。**候補未採用、構築停止**。公開通信はVPC firewallを通らず、一般socketから許可外公開TCP/UDP/portへ到達し得る。従来の独立ネットワークdenyを維持できるとは扱わない。
+
+用途別Origin/全DNS回答検査/固定socket/秘密限定/route.fulfillを維持する。private/reserved/Metadata/loopback・DNS rebinding・全ブラウザ入口・一般socket/公開canaryの実機確認が必要。ページ機能がguardを迂回できる場合、または任意socketの強い隔離が必要な場合は不採用。費用条件を満たすために安全要件を無断で変更しない。
+
+以下のVPC all-traffic/NAT/組織ポリシーは旧経路の記録で、現行構築の必須値ではない。HTTP transportの既存hard capは汎用最大値で、無料profileでは時間/画像/送受信/再試行共有予算を正本の低い上限へ制限する。Task retryで予算を再初期化しない実装は#39に残る。
+
 ## 現状と調査範囲
 
 | 対象 | 現状と不足 |

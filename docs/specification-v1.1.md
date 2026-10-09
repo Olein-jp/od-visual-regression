@@ -133,6 +133,14 @@ OD Visual Regression は、WordPress のステージング・テスト環境に�
 
 # 4. 基本アーキテクチャ方針
 
+## 4.0 追加クラウド費用の採用条件（Issue #57）
+
+試用クレジット終了後も、合意した利用量で原則として追加のランニングコストが発生しないことを採用条件とする。無制限無料、Cloud Run単体の無料枠、課金予算通知だけを根拠にしない。既存WordPressサーバー料金は追加クラウド費用と区別する。
+
+料金・地域/経路・共有無料枠・月額試算・利用上限・停止/cleanup・残余リスクの正本は[無料枠クラウド設計](free-tier-cloud-design.md)。2026-10-10時点で候補は未採用、#57は未解決で構築停止中。常設NAT・外部IPv4・VPC connector・VM・最小インスタンスを標準から除外する。無料枠残量不明、未確認の配備経路、安全要件不適合なら新規起動を拒否する。
+
+月8Run・1Run最大6Target×Device・Task600秒/retry1・送信/保管等の予約上限は未合意の提案値。条件付き0円試算を実環境の0円認定としない。公開GHCR直接配備とprivate-ranges-onlyを候補にするが、公開通信の独立firewall制御喪失、北米内無料送信の適格性、実機結果を確認するまでAPI有効化・資源作成・デプロイを行わない。実装#39、設定/表示#40、結果表示#41、結合検証#13に割り当てる。
+
 ## 4.1 WordPressをデータ管理の本体とする
 
 永続データはWordPress側へ保存する。
@@ -150,7 +158,7 @@ OD Visual Regression は、WordPress のステージング・テスト環境に�
 - Baseline
 - Error情報
 
-Cloud Run側には恒久データを保存しない。
+画像・比較結果の恒久データはWordPressへ保存する。クラウドには重複起動防止の受付台帳・利用枠集計と期限付き秘密だけを保持し、期限後に回収する。
 
 ---
 
@@ -1634,11 +1642,11 @@ Browser concurrency
 
 # 59. Cloud Run Job
 
-初期推奨：
+無料profile候補（未採用、§4.0と設計正本のgateが優先）：
 
 ```text
 CPU
-1～2 vCPU
+2 vCPU
 
 Memory
 2 GiB
@@ -1647,7 +1655,7 @@ Task Count
 1
 
 Timeout
-30 min
+10 min
 
 Retries
 1
@@ -1657,10 +1665,12 @@ Retries
 
 # 60. Cloud Run Resources
 
+Dispatcherはrequest-based・CPU1/512MiB・min0/max1・timeout30秒・concurrency1を候補にする。台帳・Secret Manager・Scheduler・ログを含む費用と通信防御は§4.0の採用条件に従う。旧NAT/all-traffic/Artifact Registry固定の準備コードは実行しない。
+
 構成：
 
 ```text
-Google Artifact Registry
+公開GitHub Container Registry（digest直接参照、未採用）
 
 Cloud Run Service
 odvr-dispatcher

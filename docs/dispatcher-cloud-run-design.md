@@ -2,7 +2,15 @@
 
 [Issue #10](https://github.com/Olein-jp/od-visual-regression/issues/10)（Phase 5）の設計成果物。根拠は[仕様v1.1](specification-v1.1.md) §7〜8・§12〜13・§38〜40・§58〜66。先行する[API・認証・Storage設計](api-security-storage-design.md)（#4）、[ネットワーク設計](network-security-design.md)（#5）、[Runの状態・期限設計](data-lifecycle-design.md)を引き継ぐ。採用候補の設計であり、合意後に実装Issueへ分割する。今回は設計文書のみ変更し、製品コード・Schema・クラウドリソースは変更しない。
 
-## 現状と推奨構成
+## Issue #57 の費用・通信経路改訂（2026-10-10）
+
+費用・資源・通信経路・利用上限・後続計画の正本を[無料枠クラウド設計](free-tier-cloud-design.md)へ移す。**候補未採用、#57未解決、構築停止**。既存HMAC/台帳/起動不明/秘密期限/最小IAMを維持し、account共通予約・cleanup余裕を#39で追加する。月8Run・最大6Snapshot・Task600秒/retry1・CPU2/2GiB、Dispatcher min0/max1・30秒/concurrency1は未合意の候補。§4.0仕様と正本の停止gateが優先する。
+
+公開GHCR digestの直接配備（有料remote repositoryなし）、Direct VPC private-ranges-only（NAT/外部IPv4なし）を評価する。公開TCP/UDP/portへのVPC firewall制御を失うため旧all-trafficと同等ではない。北米内送信枠、共有残量、実機迂回拒否の成立前に公開しない。
+
+以下の#10当時の調査表・Image資源表・all-traffic/NAT/Registry構築値・旧5項目計画は**旧設計の記録**であり、採用構成/実行手順ではない。これらの費用/通信値は上記正本で置き換える。製品実装済の範囲は末尾の#32/#36/#37/#38とリンク先で確認する。変更予定ファイルと検証の現行5項目計画も正本を参照する。
+
+## 現状と推奨構成（#10当時、費用・経路は失効）
 
 調査範囲は指定のRunner package/入口、CI、security、指定仕様と、直接依存するconfig・Context・executeRun・先行設計・wp-env設定・lockfileに限定した。
 
