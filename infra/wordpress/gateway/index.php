@@ -26,7 +26,19 @@ if ( filter_var( ini_get( 'enable_post_data_reading' ), FILTER_VALIDATE_BOOLEAN 
 	http_response_code( 503 );
 	header( 'Content-Type: application/json; charset=UTF-8' );
 	header( 'Cache-Control: private, no-store' );
-	echo '{"code":"odvr_raw_upload_unavailable","message":"Runner専用ディレクトリのPHP設定を確認してください。"}';
+	// 設置不備を判別する真偽値だけを返す。サーバーのパス・環境変数・資格情報は公開しない。
+	echo json_encode(
+		array(
+			'code'    => 'odvr_raw_upload_unavailable',
+			'message' => 'Runner専用ディレクトリのPHP設定を確認してください。',
+			'checks'  => array(
+				'per_directory_ini_supported' => in_array( PHP_SAPI, array( 'cgi-fcgi', 'fpm-fcgi' ), true ),
+				'user_ini_filename_matches'   => '.user.ini' === ini_get( 'user_ini.filename' ),
+				'user_ini_present'            => is_file( __DIR__ . '/.user.ini' ),
+				'user_ini_readable'           => is_readable( __DIR__ . '/.user.ini' ),
+			),
+		)
+	);
 	exit;
 }
 

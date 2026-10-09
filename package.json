@@ -32,7 +32,8 @@
     "local:check": "node infra/scripts/local.mjs check",
     "test:local": "node infra/scripts/test-local.mjs",
     "cloud:plan": "node infra/scripts/cloud-plan.mjs",
-    "test:cloud-plan": "node --test infra/cloud/*.test.mjs"
+    "test:cloud-plan": "node --test infra/cloud/*.test.mjs",
+    "cloud:deployment-plan": "node infra/scripts/cloud-deployment-plan.mjs"
   },
   "devDependencies": {
     "@wordpress/env": "^11.17.0"

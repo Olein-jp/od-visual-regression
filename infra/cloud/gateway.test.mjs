@@ -62,6 +62,12 @@ test('PHPの生本文非対応・長さ欠落・42MiB超過はWordPress起動前
     const unsupported = value.invoke(`${base}/manifest`, 'GET', { raw: false });
     assert.equal(unsupported.status, 503);
     assert.equal(unsupported.body.code, 'odvr_raw_upload_unavailable');
+    assert.deepEqual(unsupported.body.checks, { per_directory_ini_supported: false,
+      user_ini_filename_matches: true, user_ini_present: true, user_ini_readable: true });
+    await rm(join(value.directory, 'odvr-runner-gateway/.user.ini'));
+    const missing = value.invoke(`${base}/manifest`, 'GET', { raw: false });
+    assert.equal(missing.body.checks.user_ini_present, false);
+    assert.equal(missing.body.checks.user_ini_readable, false);
     for (const length of ['', '01', '-1', '1e2']) assert.deepEqual(value.invoke(`${base}/snapshots`, 'POST', { length }), { body: null, status: 411 });
     assert.deepEqual(value.invoke(`${base}/snapshots`, 'POST', { length: '44040193' }), { body: null, status: 413 });
     assert.equal(value.invoke(`${base}/snapshots`, 'POST', { length: '44040192' }).body.booted, true);

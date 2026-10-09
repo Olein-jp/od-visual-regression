@@ -1,6 +1,6 @@
 # Cloud Run 基盤の準備と実機検証
 
-[Issue #39](https://github.com/Olein-jp/od-visual-regression/issues/39) の準備段階。現時点では **未完了**。構築計画の生成とローカルでの定義検査を追加し、クラウド資源の作成・公開・実測は行っていない。Service/Job/Scheduler の構築、WIF による明示 release/rollbackは後続作業として残る。計画だけを根拠に Issue を閉じない。
+[Issue #39](https://github.com/Olein-jp/od-visual-regression/issues/39) の準備段階。現時点では **未完了**。構築計画の生成とローカルでの定義検査を追加し、クラウド資源の作成・公開・実測は行っていない。Service/Job/Scheduler の構築、WIF による明示 release/rollback は後続作業として残る。計画だけを根拠に Issue を閉じない。
 
 ## 環境設定と計画
 
@@ -75,3 +75,11 @@ WIF provider は実際に確認した GitHub の repository ID `1409590981`、ow
 ## 通常 CI の変更範囲判定
 
 Runner の変更は Runner と、それを直接利用する Dispatcher およびローカル結合を検証する。Dispatcher の変更は Dispatcher とローカル結合、WordPress の変更は WordPress・配布 ZIP とローカル結合を検証する。共通契約・依存定義・infra・workflow・未知パスは全検証する。削除・移動元を含め、差分を取得できない場合も全検証する。docs だけの変更は製品 build を省略し、常時実行する結果集約で失敗・中断を検出する。クラウド資源の作成・デプロイは通常 CI に含めない。
+
+## 固定配備計画の生成
+
+`npm run cloud:deployment-plan -- .odvr-cloud/staging.json .odvr-cloud/release.json` は Job または非公開 Service の具体的な配備 argv と hash を出力する。クラウド操作は実行しない。release JSON のキーは `component`（runner/dispatcher）、`git_revision`（40桁 commit）、`image`（同一project/region/componentのRegistry manifest digest）、`config_version`（固定数値文字列）の4つだけ。未知キー、別projectのimage、tag、latest、任意引数・秘密本文を拒否する。
+
+Jobはタスク数・timeout・retryをService用フラグと区別し、container固有設定の前にJob全体の設定を置く。ServiceはIAM認証必須・非公開、最大2instance・最小0にする。両者ともGEN2、専用SA、Direct VPC all-traffic、固定config volumeを使う。`runnerRegistration` はRun専用project番号と固定callbackだけのcloud登録JSONを生成する。Shared Secret本文は含めない。
+
+この計画は配備済みの証拠ではなく、WIF実行・Scheduler構築・rollbackの代わりにはならない。実行前にRegistry digestと検証済みcommitの対応、config versionの本文、既存定義・コンテナ数・IAM・実行中Runを照合する。Job更新後は実generationを取得してDispatcher設定へ同期し、同じExecutionを再起動しない。
