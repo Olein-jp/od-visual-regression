@@ -10,7 +10,7 @@ Issue #38の製品結合基盤。管理画面/ViewerとMVP全シナリオは後�
 
 ## wp-env
 
-Docker/Compose、Node、opensslを使用する。既存のこのrepositoryのwp-envを起動しておく。fixture専用の単一サイトで実行し、既存Basic認証のあるサイトは対象外とする。
+Docker/Compose、Node、opensslを使用する。Dockerはcontainerd Image storeを必要とする。Docker Desktopでは「Use containerd for pulling and storing images」を有効にする。従来のImage storeはload時にmanifest digestを失うため、タグやconfig digestへの代替を行わず起動前に拒否する。CIでは専用Docker daemonにcontainerd storeを設定し、既存ホストのDocker設定を自動変更しない。既存のこのrepositoryのwp-envを起動しておく。fixture専用の単一サイトで実行し、既存Basic認証のあるサイトは対象外とする。
 
 ```sh
 npm ci
