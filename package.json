@@ -23,7 +23,14 @@
     "test:contracts": "node --test packages/schemas/tests/*.test.mjs",
     "runner:job": "node apps/runner/dist/job.js",
     "test:dispatcher": "node --test apps/dispatcher/tests/*.test.mjs",
-    "dispatcher": "node apps/dispatcher/dist/index.js"
+    "dispatcher": "node apps/dispatcher/dist/index.js",
+    "images:build": "node infra/scripts/build-images.mjs",
+    "local:start": "node infra/scripts/local.mjs start",
+    "local:fixture": "node infra/scripts/local.mjs fixture",
+    "local:status": "node infra/scripts/local.mjs status",
+    "local:stop": "node infra/scripts/local.mjs stop",
+    "local:check": "node infra/scripts/local.mjs check",
+    "test:local": "node infra/scripts/test-local.mjs"
   },
   "devDependencies": {
     "@wordpress/env": "^11.17.0"
