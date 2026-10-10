@@ -133,6 +133,14 @@ OD Visual Regression は、WordPress のステージング・テスト環境に�
 
 # 4. 基本アーキテクチャ方針
 
+## 4.0 追加クラウド費用の採用条件（Issue #57）
+
+PHP/WordPressコア更新時の不定期テストを対象とする。2026-10-10に利用者から、1サイト最大20ページ、顧客サーバーは日本国内中心、必要な実行時従量課金は許容する条件を確認した。無料枠を優先し、待機中の固定費を避ける。厳格な原則0円/月8Run/6Snapshot条件は撤回する。既存WordPressサーバー料金は追加クラウド費用と区別する。
+
+料金・地域/経路・共有枠・試算式・利用上限・予約/停止/cleanupと防御の正本は[クラウド費用設計](free-tier-cloud-design.md)。東京Cloud Run min0/Job、公開GHCRを候補にし、NATなしは独立firewall制御を失うため不採用推奨、一時NAT＋Runner all-trafficを代案とする。常設NAT・外部IPv4・connector・VM・最小インスタンスを標準から除外する。保管/秘密/Scheduler等の待機管理費を実行従量費と分ける。無料残量不明だけでは拒否せず、有効な料金/従量利用枠で保守予約する。料金/利用枠不明・安全要件不適合では停止する。
+
+既存3Deviceを初期提案として20Target×3Device＝最大60Snapshot/Run、Task1800秒/retry1、CPU2/2GiBと共有送受信上限を候補にする。月の回数と金額上限は未指定で、#39の具体的な配備見積りに記載する。費用方針は確認済みだが、一時NAT代案の採用判断待ちにつき#57は未解決、クラウド構築停止。実装#39、設定/表示#40、結果表示#41、結合検証#13に割り当てる。
+
 ## 4.1 WordPressをデータ管理の本体とする
 
 永続データはWordPress側へ保存する。
@@ -150,7 +158,7 @@ OD Visual Regression は、WordPress のステージング・テスト環境に�
 - Baseline
 - Error情報
 
-Cloud Run側には恒久データを保存しない。
+画像・比較結果の恒久データはWordPressへ保存する。クラウドには重複起動防止の受付台帳・利用枠集計と期限付き秘密だけを保持し、期限後に回収する。
 
 ---
 
@@ -1634,11 +1642,11 @@ Browser concurrency
 
 # 59. Cloud Run Job
 
-初期推奨：
+不定期更新テストprofile候補（未採用、§4.0と設計正本のgateが優先）：
 
 ```text
 CPU
-1～2 vCPU
+2 vCPU
 
 Memory
 2 GiB
@@ -1657,10 +1665,12 @@ Retries
 
 # 60. Cloud Run Resources
 
+Dispatcherはrequest-based・CPU1/512MiB・min0/max1・timeout30秒・concurrency1を候補にする。台帳・Secret Manager・Scheduler・ログを含む費用と通信防御は§4.0の採用条件に従う。旧NAT/all-traffic/Artifact Registry固定の準備コードは実行しない。
+
 構成：
 
 ```text
-Google Artifact Registry
+公開GitHub Container Registry（digest直接参照、未採用）
 
 Cloud Run Service
 odvr-dispatcher
