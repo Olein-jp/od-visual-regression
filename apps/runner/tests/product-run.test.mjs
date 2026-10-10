@@ -54,3 +54,19 @@ test('Complete確定後のTask retryは同じCompleteだけで終了する',asyn
 test('401/403/404・期限後はManifest探索や別経路の送信をしない',async t=>{for(const status of [401,403,404]){const {seen,client,dependencies}=setup(t);client.complete=async()=>{throw new WordPressApiError('odvr_runner_unauthorized',status);};await assert.rejects(executeProductRun(client,{executionId:'execution'},dependencies),error=>error.status===status);assert.equal(seen.launch,0);}const {seen,client,dependencies,abort}=setup(t);abort.abort();await assert.rejects(executeProductRun(client,{executionId:'execution'},dependencies),{code:'odvr_run_deadline'});assert.equal(seen.uploads.length,0);});
 
 test('Browser切断は対象失敗へ分散せずRun全体をfailedにする',async t=>{const {seen,client,dependencies}=setup(t);const launch=dependencies.launch;dependencies.launch=async()=>({...await launch(),isConnected:()=>false});const state=await executeProductRun(client,{executionId:'execution'},dependencies);assert.equal(state.status,'failed');assert.equal(seen.uploads.length,0);assert.equal(seen.complete.at(-1).outcome,'failed');});
+
+test('最小検証で2ページ以上のManifestはBrowser起動前にRunを失敗確定する',async t=>{
+  const {seen,client,dependencies}=setup(t);
+  await executeProductRun(client,{executionId:'execution',profile:'cloud',usageProfile:'minimal_validation'},dependencies);
+  assert.equal(seen.launch,0);assert.equal(seen.captures.length,0);
+  assert.equal(seen.complete.at(-1).outcome,'failed');
+});
+test('最小検証は選択した1ページだけを撮影して完了する',async t=>{
+  const {manifest,seen,client,dependencies}=setup(t);
+  manifest.targets=manifest.targets.slice(0,1);manifest.devices=manifest.devices.slice(0,1);
+  manifest.run.snapshot_states=manifest.run.snapshot_states.slice(0,1);
+  manifest.reference.snapshots=manifest.reference.snapshots.slice(0,1);
+  await executeProductRun(client,{executionId:'execution',profile:'cloud',usageProfile:'minimal_validation'},dependencies);
+  assert.equal(seen.launch,1);assert.deepEqual(seen.captures,[1]);
+  assert.equal(seen.complete.at(-1).outcome,'finished');
+});

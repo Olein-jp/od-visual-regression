@@ -4,14 +4,15 @@ import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { checkedEnvironment, assertSeparateEnvironments, foundationPlan, planHash } from './plan.mjs';
 
+const expiry = new Date(Date.now()+86400000).toISOString();
 const fixture = () => ({
-  schema_version: 1, environment: 'staging', profile: 'cloud', configuration: 'odvr-staging',
+  schema_version: 2, environment: 'staging', profile: 'cloud', configuration: 'odvr-staging',
   operator_account: 'operator@fixture.invalid', project_id: 'odvr-fixture-staging', project_number: '123456789012',
   run_secret_project_id: 'odvr-fixture-secrets', run_secret_project_number: '223456789012',
   region: 'asia-northeast1', subnet_cidr: '10.39.0.0/26',
   github: { repository: 'Olein-jp/od-visual-regression', repository_id: '1409590981', owner_id: '28924629' },
   sites: { 'staging-1': { callback_base: 'https://wordpress.odvr-fixture.com/wp-json/odvr/v1/runner',
-    shared_secret: 'odvr-fixture-shared', shared_version: '1' } }, budget_usd: 10, cleanup_after_days: 1,
+    shared_secret: 'odvr-fixture-shared', shared_version: '1' } }, usage_policy: { version: 1, profile: 'update_test', expires_at: expiry, max_runs: 2, max_active: 2, spend_limit_usd: 10, management_reserve_usd: 1 }, cleanup_after_days: 1,
 });
 
 test('未確定のテンプレートはクラウド計画に使えない', async () => {
@@ -26,7 +27,7 @@ test('local混在・秘密・未知設定・project同一・不正CIDRを拒否�
     { run_secret_project_id: 'odvr-fixture-staging' }, { run_secret_project_number: '123456789012' },
     { project_number: 123456789012 }, { subnet_cidr: '10.39.0.0/27' }, { subnet_cidr: '10.39.0.1/26' },
     { subnet_cidr: '169.254.0.0/16' }, { subnet_cidr: '10.39.0.0/26/extra' },
-    { configuration: 'default' }, { operator_account: 'bad;account' }, { budget_usd: 0 },
+    { configuration: 'default' }, { operator_account: 'bad;account' }, { usage_policy: null },
     { cleanup_after_days: 8 }, { region: 'asia-northeast1;echo' },
   ];
   for (const change of changes) assert.throws(() => checkedEnvironment({ ...fixture(), ...change }));
@@ -111,7 +112,7 @@ test('staging/productionでproject/番号を再利用できない', () => {
 });
 test('計画hashは決定的で、targetや予算が変われば変わる', () => {
   assert.equal(planHash(foundationPlan(fixture())), planHash(foundationPlan(fixture())));
-  assert.notEqual(planHash(foundationPlan(fixture())), planHash(foundationPlan({ ...fixture(), budget_usd: 20 })));
+  assert.notEqual(planHash(foundationPlan(fixture())), planHash(foundationPlan({ ...fixture(), usage_policy: { ...fixture().usage_policy, spend_limit_usd: 20 } })));
 });
 test('CLIは不正入力をechoせず失敗し、gcloudがなくてもテストできる', () => {
   const result = spawnSync(process.execPath, ['infra/scripts/cloud-plan.mjs', 'infra/environments/staging.example.json'],
