@@ -2,7 +2,7 @@
 
 [Issue #39](https://github.com/Olein-jp/od-visual-regression/issues/39) の準備段階。現時点では **未完了**。構築計画の生成とローカルでの定義検査を追加し、クラウド資源の作成・公開・実測は行っていない。Service/Job/Scheduler の構築、WIF による明示 release/rollback は後続作業として残る。計画だけを根拠に Issue を閉じない。
 
-## 運用費の前提と構築停止
+## 運用費の旧前提と構築停止の経緯
 
 2026年10月9日に利用者の採用条件を再確認した。Google Cloud採用の前提は「基本的にランニングコストが発生しないこと」。Cloud Runの実行料だけを無料枠に収める説明では構成全体の条件を満たさない。常設Cloud NAT・外部IPv4を含む現在の準備計画は、この前提に適合していないため構築しない。
 
@@ -14,9 +14,11 @@ NATを外すだけで現在の安全要件を満たしたとは扱わない。�
 
 ## Issue #57 の設計記録と再開条件（2026-10-10）
 
-[無料枠クラウド設計](free-tier-cloud-design.md)を仕様・費用・上限・経路・後続5項目計画の正本とする。月8Run/6Snapshotの条件付き0円profileは未合意。日本向け等の通信無料条件、共有枠、公開GHCR実配備、NATなしの迂回通信拒否が未確認のため、#57は未解決、#39/PR #56の構築停止を維持する。
+[クラウド費用設計](free-tier-cloud-design.md)を正本とする。利用者が不定期のPHP/WordPress更新テスト・最大20ページ・国内顧客サーバー中心・必要な実行時従量課金許容を確認したため、旧月8Run/6Snapshot/厳格0円条件は撤回。待機固定費回避、東京、20Target×初期3Device、Task1800秒/retry1を候補にする。月次回数/金額上限を勝手に確定しない。
 
-`infra/cloud/plan.mjs`は正のbudget_usd、NAT/外部IPv4、Registryを固定し、`deployment.mjs`はall-traffic・同project/region Registry・旧資源値を固定する。今回はコードを変えないため、生成された計画は新設計に適合しない。再開前に#39で無料目標0/有効なquota証明・失効時停止・GHCR digest・private-ranges-only・低資源上限・account原子予約を実装し、未採用/旧設定を計画生成段階から拒否する。
+`infra/cloud/plan.mjs`のbudget_usdを単なる通知用から料金/従量利用枠/有効期限と区別する。NAT/外部IPv4/Registry/all-traffic固定は除去対象。#39でGHCR digest、private-ranges-only、更新テストprofile、account原子予約と停止時cleanupを実装する。無料残量不明でも有効な費用枠で保守予約するが、料金/費用枠不明・未採用/旧設定は計画生成時に拒否する。
+
+費用方針の確認だけで配備承認とはしない。公開GHCR実配備、待機保管/管理費、NATなしの必要な安全性が未確認のため、#57未解決、#39/PR #56の構築停止を維持する。国内サーバーを北米へ移す要件は設けない。
 
 以下は**再設計前の準備コードの説明・検証項目**。NAT/all-traffic/旧registry/timeout等は実行対象外で、現行canary/費用検証は正本の差分に置き換える。旧値のローカルテスト成功は無料構成の採用や実機合格を意味しない。既存IAM/HMAC/期限・rollback・同一digestの責務は維持する。
 

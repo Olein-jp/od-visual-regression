@@ -4,9 +4,9 @@
 
 ## Issue #57 の費用・通信経路改訂（2026-10-10）
 
-費用・資源・通信経路・利用上限・後続計画の正本を[無料枠クラウド設計](free-tier-cloud-design.md)へ移す。**候補未採用、#57未解決、構築停止**。既存HMAC/台帳/起動不明/秘密期限/最小IAMを維持し、account共通予約・cleanup余裕を#39で追加する。月8Run・最大6Snapshot・Task600秒/retry1・CPU2/2GiB、Dispatcher min0/max1・30秒/concurrency1は未合意の候補。§4.0仕様と正本の停止gateが優先する。
+費用・資源・通信経路・利用上限・後続計画の正本を[クラウド費用設計](free-tier-cloud-design.md)へ移す。2026-10-10に不定期更新テスト・最大20ページ・国内顧客中心・実行時従量課金許容を確認した。旧月8Run/6Snapshot/0円条件は撤回。東京、最大20Target×3Device/Task1800秒/retry1/CPU2/2GiB、Dispatcher min0/max1/30秒/concurrency1を候補にする。HMAC/台帳/起動不明/秘密期限/最小IAMとaccount原子予約を維持する。
 
-公開GHCR digestの直接配備（有料remote repositoryなし）、Direct VPC private-ranges-only（NAT/外部IPv4なし）を評価する。公開TCP/UDP/portへのVPC firewall制御を失うため旧all-trafficと同等ではない。北米内送信枠、共有残量、実機迂回拒否の成立前に公開しない。
+公開GHCR直接配備とNATなし/private-ranges-onlyは引き続き評価対象。無料残量不明だけで停止せず、料金/従量利用枠を保守予約する。待機時保管/管理費は実行費と分ける。**安全な経路は未採用、#57未解決、構築停止**。公開TCP/UDP/portの独立firewall制御喪失と迂回拒否を確認するまで公開しない。
 
 以下の#10当時の調査表・Image資源表・all-traffic/NAT/Registry構築値・旧5項目計画は**旧設計の記録**であり、採用構成/実行手順ではない。これらの費用/通信値は上記正本で置き換える。製品実装済の範囲は末尾の#32/#36/#37/#38とリンク先で確認する。変更予定ファイルと検証の現行5項目計画も正本を参照する。
 
