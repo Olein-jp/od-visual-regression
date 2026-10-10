@@ -1,5 +1,6 @@
 import { isIP } from 'node:net';
 import { createHash } from 'node:crypto';
+import { checkedUsagePolicy, estimateRun } from './usage-policy.mjs';
 
 const keys = (value, expected) => value && typeof value === 'object' && !Array.isArray(value)
   && Object.keys(value).length === expected.length && expected.every(key => Object.hasOwn(value, key));
@@ -11,17 +12,18 @@ const fail = () => { throw new Error('クラウドの環境設定を確認して
 export function checkedEnvironment(value) {
   if (!keys(value, ['schema_version', 'environment', 'profile', 'configuration', 'operator_account',
     'project_id', 'project_number', 'run_secret_project_id', 'run_secret_project_number', 'region',
-    'subnet_cidr', 'github', 'sites', 'budget_usd', 'cleanup_after_days'])) fail();
-  if (value.schema_version !== 1 || value.profile !== 'cloud' || !['staging', 'production'].includes(value.environment)
+    'subnet_cidr', 'github', 'sites', 'usage_policy', 'cleanup_after_days'])) fail();
+  if (value.schema_version !== 2 || value.profile !== 'cloud' || !['staging', 'production'].includes(value.environment)
     || value.configuration !== `odvr-${value.environment}` || !project(value.project_id)
     || !project(value.run_secret_project_id) || value.project_id === value.run_secret_project_id
     || !number(value.project_number) || !number(value.run_secret_project_number)
     || value.project_number === value.run_secret_project_number
     || typeof value.region !== 'string' || !/^[a-z]+-[a-z]+[1-9][0-9]?$/.test(value.region)
     || typeof value.operator_account !== 'string' || !/^[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value.operator_account)
-    || !Number.isFinite(value.budget_usd) || value.budget_usd <= 0
+    || value.region !== 'asia-northeast1'
     || !Number.isInteger(value.cleanup_after_days) || value.cleanup_after_days < 1
     || value.cleanup_after_days > (value.environment === 'staging' ? 7 : 30)) fail();
+  checkedUsagePolicy(value.usage_policy);
   const [address, mask, extra] = typeof value.subnet_cidr === 'string' ? value.subnet_cidr.split('/') : [];
   if (extra !== undefined || isIP(address ?? '') !== 4 || !/^(?:1[6-9]|2[0-6])$/.test(mask ?? '')) fail();
   const octets = address.split('.').map(Number);
@@ -73,7 +75,7 @@ export function foundationPlan(input) {
   const { project_id: projectId, project_number: projectNumber, run_secret_project_id: secretProject,
     region, environment } = config;
   const prefix = `odvr-${environment}`;
-  const accounts = Object.fromEntries(['dispatcher', 'runner', 'scheduler', 'build', 'deploy']
+  const accounts = Object.fromEntries(['dispatcher', 'runner', 'scheduler', 'network', 'deploy']
     .map(name => [name, `odvr-${name}@${projectId}.iam.gserviceaccount.com`]));
   const commands = [];
   // argv配列の計画。shellへの貼付けやクラウドの暗黙の実行は行わない。
@@ -83,23 +85,18 @@ export function foundationPlan(input) {
     ['projects', 'add-iam-policy-binding', target, `--member=serviceAccount:${member}`, `--role=${role}`, `--condition=${condition}`]);
   add('preflight', projectId, ['projects', 'describe', projectId, '--format=json(projectId,projectNumber,lifecycleState)']);
   add('preflight', secretProject, ['projects', 'describe', secretProject, '--format=json(projectId,projectNumber,lifecycleState)']);
-  add('apis', projectId, ['services', 'enable', 'run.googleapis.com', 'artifactregistry.googleapis.com',
+  add('apis', projectId, ['services', 'enable', 'run.googleapis.com',
     'firestore.googleapis.com', 'secretmanager.googleapis.com', 'cloudscheduler.googleapis.com',
     'compute.googleapis.com', 'iam.googleapis.com', 'iamcredentials.googleapis.com', 'sts.googleapis.com']);
   add('apis', secretProject, ['services', 'enable', 'secretmanager.googleapis.com', 'iam.googleapis.com']);
   for (const name of Object.keys(accounts)) add('identities', projectId,
     ['iam', 'service-accounts', 'create', `odvr-${name}`, `--display-name=ODVR ${environment} ${name}`]);
-  for (const component of ['runner', 'dispatcher']) add('registry', projectId,
-    ['artifacts', 'repositories', 'create', `odvr-${component}`, '--repository-format=docker',
-      `--location=${region}`, '--immutable-tags']);
   add('ledger', projectId, ['firestore', 'databases', 'create', '--database=(default)',
     `--location=${region}`, '--type=firestore-native', '--delete-protection']);
   add('network', projectId, ['compute', 'networks', 'create', prefix, '--subnet-mode=custom', '--bgp-routing-mode=regional']);
   add('network', projectId, ['compute', 'networks', 'subnets', 'create', prefix, `--network=${prefix}`,
     `--region=${region}`, `--range=${config.subnet_cidr}`, '--stack-type=IPV4_ONLY', '--enable-private-ip-google-access']);
   add('network', projectId, ['compute', 'routers', 'create', prefix, `--network=${prefix}`, `--region=${region}`]);
-  add('network', projectId, ['compute', 'routers', 'nats', 'create', prefix, `--router=${prefix}`,
-    `--region=${region}`, `--nat-custom-subnet-ip-ranges=${prefix}`, '--auto-allocate-nat-external-ips']);
   const firewall = (suffix, priority, action, rules, ranges) => add('network', projectId,
     ['compute', 'firewall-rules', 'create', `${prefix}-${suffix}`, `--network=${prefix}`, '--direction=EGRESS',
       `--priority=${priority}`, `--action=${action}`, `--rules=${rules}`, `--destination-ranges=${ranges}`,
@@ -128,11 +125,6 @@ export function foundationPlan(input) {
     add('iam', projectId, ['secrets', 'add-iam-policy-binding', secret,
       `--member=serviceAccount:${accounts.dispatcher}`, '--role=roles/secretmanager.secretAccessor', '--condition=None']);
   for (const component of ['runner', 'dispatcher']) {
-    add('iam', projectId, ['artifacts', 'repositories', 'add-iam-policy-binding', `odvr-${component}`,
-      `--location=${region}`, `--member=serviceAccount:${accounts.build}`, '--role=roles/artifactregistry.writer', '--condition=None']);
-    add('iam', projectId, ['artifacts', 'repositories', 'add-iam-policy-binding', `odvr-${component}`,
-      `--location=${region}`, `--member=serviceAccount:service-${projectNumber}@serverless-robot-prod.iam.gserviceaccount.com`,
-      '--role=roles/artifactregistry.reader', '--condition=None']);
     add('iam', projectId, ['iam', 'service-accounts', 'add-iam-policy-binding', accounts[component],
       `--member=serviceAccount:${accounts.deploy}`, '--role=roles/iam.serviceAccountUser', '--condition=None']);
   }
@@ -146,17 +138,20 @@ export function foundationPlan(input) {
     `--attribute-condition=assertion.repository_id == '${config.github.repository_id}' && assertion.repository_owner_id == '${config.github.owner_id}' && assertion.ref == 'refs/heads/main' && assertion.sub == 'repo:${config.github.repository}:environment:${environment}' && assertion.workflow_ref == '${config.github.repository}/.github/workflows/cloud-release.yml@refs/heads/main'`]);
   // Environmentの保護・workflow本体が完成するまではSAへのWIF bindingを作らない。
   return {
-    schema_version: 1, status: 'preparation_only', environment, projects: [projectId, secretProject], region,
+    schema_version: 2, status: 'preparation_only', environment, projects: [projectId, secretProject], region,
     operator_account: config.operator_account, accounts, workload_identity_provider: provider, audience,
-    approval_required: true, estimated_budget_usd: config.budget_usd,
+    approval_required: true, estimated_budget_usd: config.usage_policy.spend_limit_usd,
+    usage_policy: config.usage_policy, run_estimate: estimateRun(config.usage_policy.profile),
+    network_lifecycle: { mode: 'on_demand', idle_gateway_count: 0, idle_external_ip_count: 0, maximum_external_ips: 1 },
     budget_is_hard_limit: false, cleanup_after_days: config.cleanup_after_days,
-    paid_resources: ['Artifact Registry の保存・転送', 'Cloud NAT の稼働・転送と外部 IPv4',
+    paid_resources: ['テスト中だけの Cloud NAT と外部 IPv4（終了後に削除・解放）',
       'Firestore の保存・読み書き', 'Secret Manager の version・操作', 'Cloud Run の CPU・メモリ・通信',
       'Cloud Scheduler の job', '監査ログの保存'],
     commands,
     remaining: ['実project/番号・請求先・region quota・IAM条件のpreflightと費用承認',
       'Shared Secretの別途作成と固定version検証（payloadはこの計画に含めない）',
-      'Service/Job/Schedulerの構築、digest promotion、設定version固定、WIF release/rollback',
+      '公開GHCR直接配備検証、Service/Job/Scheduler構築、設定version固定、WIF release/rollback',
+      '専用network controllerと原子network lease、作成/撤去/障害復旧の実装・検証（未実装のままJob起動不可）',
       'staging IAM否定・ネットワークcanary・Run Secret expiry/delete・実Task retry・rollbackの実測'],
   };
 }

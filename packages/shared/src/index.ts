@@ -55,3 +55,10 @@ export interface NetworkDiagnostics {
 }
 
 export * from './contracts.js';
+
+/** 信頼された登録設定で選ぶ容量。検証量で製品の最大容量を縮めない。 */
+export const CLOUD_CAPTURE_PROFILES = Object.freeze({
+  minimal_validation: Object.freeze({ targets:1, devices:1, taskSeconds:300, concurrency:1, controlBytes:32*1024*1024, captureBytes:32*1024*1024 }),
+  update_test: Object.freeze({ targets:20, devices:3, taskSeconds:1800, concurrency:2, controlBytes:256*1024*1024, captureBytes:768*1024*1024 }),
+});
+export type CloudCaptureProfile = keyof typeof CLOUD_CAPTURE_PROFILES;

@@ -2,6 +2,7 @@ import { readFile, open, rename, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { chromium, type Browser } from 'playwright';
+import { CLOUD_CAPTURE_PROFILES, type CloudCaptureProfile } from '@odvr/shared';
 import type { CompleteRequest, NetworkDiagnostics, RunManifest, RunState, SnapshotResult } from '@odvr/shared';
 import { WordPressClient, WordPressApiError, PRODUCT_MESSAGES, type SnapshotImages, type WordPressClientOptions } from '../api/client.js';
 import { createContext, BROWSER_LAUNCH_OPTIONS } from '../browser/context-factory.js';
@@ -26,6 +27,7 @@ type Captured={image:Buffer;httpStatus:number};
 export interface ProductRunOptions {
   executionId:string;
   profile?:'cloud'|'local';
+  usageProfile?:CloudCaptureProfile;
   localDestination?:WordPressClientOptions['localDestination'];
   /** 登録済み運用設定の出力先だけを渡す。画像・Manifest・秘密は保存しない。 */
   reportPath?:string;
@@ -83,6 +85,12 @@ export async function executeProductRun(client:WordPressClient,options:ProductRu
   try { return await client.complete(finished); }
   catch(error) { if(!(error instanceof WordPressApiError) || error.status!==409 || !['odvr_run_incomplete','odvr_run_conflict','odvr_run_closed'].includes(error.code)) throw error; }
   const manifest=await client.manifest();
+  const limits=options.usageProfile && Object.hasOwn(CLOUD_CAPTURE_PROFILES,options.usageProfile) ? CLOUD_CAPTURE_PROFILES[options.usageProfile]:undefined;
+  if(options.profile==='cloud' && !limits) throw new WordPressApiError('odvr_usage_unavailable',503);
+  if(limits && (manifest.targets.length>limits.targets || manifest.devices.length>limits.devices
+    || manifest.run.snapshot_states.length>limits.targets*limits.devices)) {
+    return client.complete({...finished,outcome:'failed',error_code:'RUN_ABORTED',error_message:PRODUCT_MESSAGES.RUN_ABORTED});
+  }
   await client.progress({schema_version:1,runner_execution_id:options.executionId,versions});
   const credentials=await client.credentials();
   let auth:TransportAuth|undefined=credentials.http_auth ? {kind:'basic',...credentials.http_auth,developmentOnly:options.profile==='local'} : undefined;
@@ -101,8 +109,8 @@ export async function executeProductRun(client:WordPressClient,options:ProductRu
       if(client.signal.aborted) throw new WordPressApiError('odvr_run_deadline',null);
       const policy=new DestinationPolicy({captureOrigins:manifest.allowed_origins,profile:options.profile,localDestination:options.localDestination});
       // 制御側4接続/256MiBと合わせて既存のRun全体上限に収める。
-      transport=dependencies.transport ? dependencies.transport(policy,client.deadline) : new PinnedHttpClient({policy,runDeadline:client.deadline,limits:{runConnections:12,runBytes:768*1024*1024}});
-      const workers=await Promise.allSettled(Array.from({length:manifest.settings.concurrency},async()=>{
+      transport=dependencies.transport ? dependencies.transport(policy,client.deadline) : new PinnedHttpClient({policy,runDeadline:client.deadline,limits:{runConnections:12,runBytes:limits?.captureBytes ?? 768*1024*1024}});
+      const workers=await Promise.allSettled(Array.from({length:Math.min(manifest.settings.concurrency,limits?.concurrency ?? manifest.settings.concurrency)},async()=>{
         while(!fatal && !client.signal.aborted) {
           if(!browser!.isConnected()) { fatal=new Error('Browserの接続が終了しました。');stop();return; }
           const pair=queue.shift();if(!pair) return;
