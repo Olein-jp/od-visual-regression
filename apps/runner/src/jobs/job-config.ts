@@ -2,6 +2,7 @@ import { constants } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { isAbsolute, join } from 'node:path';
+import { CLOUD_CAPTURE_PROFILES, type CloudCaptureProfile } from '@odvr/shared';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { DestinationPolicy, type DestinationPolicyOptions } from '../security/destination-policy.js';
 
@@ -11,6 +12,7 @@ export class JobConfigurationError extends Error {
 interface Registration {
   schema_version:1;
   profile:'cloud'|'local';
+  usage_profile?:CloudCaptureProfile;
   sites:Record<string,{callback_base:string}>;
   secret_project?:string;
   local_secret_directory?:string;
@@ -52,13 +54,16 @@ export async function cloudRunToken(resource:string):Promise<string> {
 export async function loadJob(environment:NodeJS.ProcessEnv=process.env,secretReader=cloudRunToken) {
   try {
     const registration:Registration=JSON.parse((await readPrivateFile(environment.ODVR_JOB_CONFIG ?? '/etc/odvr/runner.json',65536)).toString('utf8'));
-    const allowed=['schema_version','profile','sites','secret_project','local_secret_directory','local_destination','report_directory'];
+    const allowed=['schema_version','profile','sites','secret_project','local_secret_directory','local_destination','report_directory','usage_profile'];
     if(!registration || registration.schema_version!==1 || !['cloud','local'].includes(registration.profile) || Object.keys(registration).some(key=>!allowed.includes(key)) || !registration.sites || Array.isArray(registration.sites)) throw new JobConfigurationError();
     const siteId=environment.ODVR_SITE_ID ?? '';const runUuid=environment.ODVR_RUN_UUID ?? '';
     const site=Object.hasOwn(registration.sites,siteId) ? registration.sites[siteId] : undefined;
     if(!/^[A-Za-z0-9_-]{1,100}$/.test(siteId) || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(runUuid) || !site || Object.keys(site).join()!=='callback_base') throw new JobConfigurationError();
     if(environment.ODVR_CALLBACK_BASE!==undefined && environment.ODVR_CALLBACK_BASE!==site.callback_base) throw new JobConfigurationError();
     const cloud=registration.profile==='cloud';
+    if(cloud && !Object.hasOwn(CLOUD_CAPTURE_PROFILES,registration.usage_profile ?? '')) throw new JobConfigurationError();
+    const limits=registration.usage_profile ? CLOUD_CAPTURE_PROFILES[registration.usage_profile]:undefined;
+    if(registration.usage_profile!==undefined && !Object.hasOwn(CLOUD_CAPTURE_PROFILES,registration.usage_profile)) throw new JobConfigurationError();
     if(cloud && ['GOOGLE_SDK_NODE_LOGGING','NODE_DEBUG','GRPC_TRACE','GRPC_VERBOSITY'].some(key=>environment[key])) throw new JobConfigurationError();
     if(cloud && (environment.CLOUD_RUN_TASK_INDEX!=='0' || environment.CLOUD_RUN_TASK_COUNT!=='1' || !environment.CLOUD_RUN_EXECUTION || environment.GOOGLE_APPLICATION_CREDENTIALS)) throw new JobConfigurationError();
     if(!cloud && (environment.K_SERVICE || environment.CLOUD_RUN_JOB || environment.CLOUD_RUN_EXECUTION)) throw new JobConfigurationError();
@@ -84,6 +89,6 @@ export async function loadJob(environment:NodeJS.ProcessEnv=process.env,secretRe
     if(!/^[A-Za-z0-9_-]{43}$/.test(token)) throw new JobConfigurationError();
     if(registration.report_directory && !isAbsolute(registration.report_directory)) throw new JobConfigurationError();
     // 非秘密設定とTokenは呼び出し元のメモリ内だけへ返す。
-    return {client:{callbackBase:site.callback_base,runUuid,executionId,token,tokenExpiresAt,profile:registration.profile,localDestination:registration.local_destination},run:{executionId,profile:registration.profile,localDestination:registration.local_destination,reportPath:registration.report_directory ? join(registration.report_directory,`${runUuid}-${executionId}.json`):undefined}};
+    return {client:{callbackBase:site.callback_base,runUuid,executionId,token,tokenExpiresAt,profile:registration.profile,localDestination:registration.local_destination,taskSeconds:limits?.taskSeconds,controlBytes:limits?.controlBytes},run:{executionId,profile:registration.profile,localDestination:registration.local_destination,usageProfile:registration.usage_profile,reportPath:registration.report_directory ? join(registration.report_directory,`${runUuid}-${executionId}.json`):undefined}};
   } catch { throw new JobConfigurationError(); }
 }

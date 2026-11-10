@@ -27,6 +27,8 @@ export interface WordPressClientOptions {
   profile?:'cloud'|'local';
   localDestination?:DestinationPolicyOptions['localDestination'];
   transport?:PinnedHttpClient;
+  taskSeconds?:number;
+  controlBytes?:number;
 }
 export interface SnapshotImages { image?:Buffer; diff_image?:Buffer }
 /** Bufferとboundaryを一度だけ作り、応答喪失後も同じ内容を送る。 */
@@ -71,9 +73,10 @@ export class WordPressClient {
     this.#execution = options.executionId;
     this.#token = options.token;
     this.#developmentOnly = options.profile === 'local';
-    this.#deadline = Math.min(options.tokenExpiresAt,Date.now()+5400000);
+    if(options.taskSeconds!==undefined && (!Number.isInteger(options.taskSeconds) || options.taskSeconds<1 || options.taskSeconds>1800)) throw new WordPressApiError('odvr_invalid_payload',400);
+    this.#deadline = Math.min(options.tokenExpiresAt,Date.now()+(options.taskSeconds ?? 5400)*1000);
     // 撮影側の12接続/768MiBと合わせ、Run全体16接続/1GiBを超えない。
-    this.#transport = options.transport ?? new PinnedHttpClient({policy,runDeadline:this.#deadline,limits:{runConnections:4,runBytes:256*1024*1024}});
+    this.#transport = options.transport ?? new PinnedHttpClient({policy,runDeadline:this.#deadline,limits:{runConnections:4,runBytes:options.controlBytes ?? 256*1024*1024}});
     this.#timer = setTimeout(() => this.close(),this.#deadline-Date.now()); this.#timer.unref();
   }
   get deadline():number { return this.#deadline; }
