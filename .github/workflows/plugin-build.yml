@@ -2,34 +2,24 @@ name: Plugin Build
 
 on:
   push:
-    paths:
-      - 'wordpress/**'
-      - 'packages/schemas/src/**'
-      - 'scripts/build-plugin.*'
-      - 'scripts/tests/test_build_plugin.py'
-      - '.github/workflows/plugin-build.yml'
-      - 'package.json'
-    tags:
-      - 'plugin-v*'
+    branches: ['**']
+    tags: ['plugin-v*']
   pull_request:
-    paths:
-      - 'wordpress/**'
-      - 'packages/schemas/src/**'
-      - 'scripts/build-plugin.*'
-      - 'scripts/tests/test_build_plugin.py'
-      - '.github/workflows/plugin-build.yml'
-      - 'package.json'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    uses: ./.github/workflows/paths.yml
   plugin:
+    needs: changes
+    if: needs.changes.outputs.plugin == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
       - name: 配布ビルドの検証
@@ -43,8 +33,17 @@ jobs:
           else
             bash scripts/build-plugin.sh
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: od-visual-regression-plugin
           path: build/od-visual-regression.zip
           if-no-files-found: error
+  plugin-result:
+    if: always()
+    needs: [changes, plugin]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 配布検証の結果を集約
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: node -e 'const jobs=JSON.parse(process.env.RESULTS);if(jobs.changes.result!=="success" || Object.values(jobs).some(job=>!["success","skipped"].includes(job.result)))process.exit(1)'

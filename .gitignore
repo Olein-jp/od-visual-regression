@@ -14,3 +14,4 @@ __pycache__/
 /wordpress/od-visual-regression/tests/contract-fixtures.generated.json
 
 /.odvr-local/
+/.odvr-cloud/
