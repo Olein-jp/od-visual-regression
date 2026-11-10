@@ -6,7 +6,7 @@
 
 費用・資源・通信経路・利用上限・後続計画の正本を[クラウド費用設計](free-tier-cloud-design.md)へ移す。2026-10-10に不定期更新テスト・最大20ページ・国内顧客中心・実行時従量課金許容を確認した。旧月8Run/6Snapshot/0円条件は撤回。東京、最大20Target×3Device/Task1800秒/retry1/CPU2/2GiB、Dispatcher min0/max1/30秒/concurrency1を候補にする。HMAC/台帳/起動不明/秘密期限/最小IAMとaccount原子予約を維持する。
 
-公開GHCR直接配備は引き続き検証対象。NATなし/private-ranges-onlyは独立した公開port/UDP denyを失うため不採用を推奨する。一時NAT＋Runner all-trafficと専用管理controllerを代案として正本に記録した。DispatcherはGoogle制御APIだけを直接利用する経路を別検証する。無料残量不明だけで停止せず、料金/従量利用枠を保守予約する。**代案採用判断待ち、#57未解決、構築停止**。東京の主要費目試算とSecret/管理workerの待機費は正本を参照する。
+公開GHCR直接配備は引き続き検証対象。NATなし/private-ranges-onlyは独立した公開port/UDP denyを失うため不採用を推奨する。一時NAT＋Runner all-trafficと専用管理controllerを代案として正本に記録した。DispatcherはGoogle制御APIだけを直接利用する経路を別検証する。無料残量不明だけで停止せず、料金/従量利用枠を保守予約する。**最小撮影でローカル実装開始、#57未解決、クラウド配備は制御実装・検証後**。東京の主要費目試算とSecret/管理workerの待機費は正本を参照する。
 
 以下の#10当時の調査表・Image資源表・all-traffic/NAT/Registry構築値・旧5項目計画は**旧設計の記録**であり、採用構成/実行手順ではない。これらの費用/通信値は上記正本で置き換える。製品実装済の範囲は末尾の#32/#36/#37/#38とリンク先で確認する。変更予定ファイルと検証の現行5項目計画も正本を参照する。
 

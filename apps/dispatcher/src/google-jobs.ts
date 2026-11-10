@@ -1,3 +1,4 @@
+import { CLOUD_CAPTURE_PROFILES } from '@odvr/shared';
 import { v2,protos } from '@google-cloud/run';
 import type { DispatcherConfig } from './config.js';
 import type { Acceptance,ExecutionInfo,JobLauncher } from './types.js';
@@ -13,9 +14,11 @@ export class GoogleJobLauncher implements JobLauncher {
   constructor(readonly config:DispatcherConfig){this.#jobs=new v2.JobsClient({projectId:config.job.name.split('/')[1],apiEndpoint:'run.googleapis.com',universeDomain:'googleapis.com'});this.#executions=new v2.ExecutionsClient({projectId:config.job.name.split('/')[1],apiEndpoint:'run.googleapis.com',universeDomain:'googleapis.com'});}
   async verify(record?:Acceptance):Promise<boolean>{
     const expected=this.config.job;
+    const profile=expected.usage_profile && Object.hasOwn(CLOUD_CAPTURE_PROFILES,expected.usage_profile) ? CLOUD_CAPTURE_PROFILES[expected.usage_profile]:undefined;
+    if(this.config.profile==='cloud' && !profile)return false;
     if(record && (record.image!==expected.image || record.job_generation!==expected.generation))return false;
     const [job]=await this.#jobs.getJob({name:expected.name},rpc);const task=job.template?.template;const containers=task?.containers ?? [];const container=containers[0];
-    const valid=job.name===expected.name && job.generation?.toString()===expected.generation && !job.reconciling && job.template?.taskCount===1 && job.template.parallelism===1 && task?.serviceAccount===expected.runner_service_account && task.maxRetries===1 && Number(task.timeout?.seconds)===1800 && task.executionEnvironment===2 && containers.length===1 && container?.name===expected.container && container.image===expected.image && (container.env ?? []).every(item=>!item.valueSource && ((item.name==='ODVR_JOB_CONFIG' && item.value==='/etc/odvr/runner.json') || (item.name==='NODE_ENV' && item.value==='production'))) && !container.args?.length && JSON.stringify(container.command ?? [])===JSON.stringify(['node','apps/runner/dist/job.js']) && container.resources?.limits?.cpu==='2' && container.resources?.limits?.memory==='2Gi' && typeof job.etag==='string' && !!job.etag;
+    const valid=job.name===expected.name && job.generation?.toString()===expected.generation && !job.reconciling && job.template?.taskCount===1 && job.template.parallelism===1 && task?.serviceAccount===expected.runner_service_account && task.maxRetries===1 && Number(task.timeout?.seconds)===(profile?.taskSeconds ?? 1800) && task.executionEnvironment===2 && containers.length===1 && container?.name===expected.container && container.image===expected.image && (container.env ?? []).every(item=>!item.valueSource && ((item.name==='ODVR_JOB_CONFIG' && item.value==='/etc/odvr/runner.json') || (item.name==='NODE_ENV' && item.value==='production'))) && !container.args?.length && JSON.stringify(container.command ?? [])===JSON.stringify(['node','apps/runner/dist/job.js']) && container.resources?.limits?.cpu==='2' && container.resources?.limits?.memory==='2Gi' && typeof job.etag==='string' && !!job.etag;
     if(valid)this.#etag=job.etag!;return valid;
   }
   environment(record:Acceptance):Record<string,string>{return jobEnvironment(this.config,record);}
